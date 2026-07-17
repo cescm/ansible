@@ -1,0 +1,68 @@
+---
+ssh_permit_root_login: prohibit-password
+enable_ufw: false
+extra_packages:
+  - ansible
+  - btop
+  - mc
+  - ncdu
+  - build-essential
+  - cmake
+  - g++
+  - make
+  - python3-pip
+  - python3-venv
+  - python3-requests
+  - iperf
+  - nmap
+  - netcat-openbsd
+  - mergerfs
+  - rclone
+  - cifs-utils
+  - samba
+  - postgresql-client
+  - sqlite3
+  - unrar
+  - zip
+  - 7zip
+  - nodejs
+  - npm
+  - golang-go
+  - php-cli
+  - pandoc
+  - sshpass
+  - nvtop
+
+docker_daemon_json:
+  runtimes:
+    nvidia:
+      path: nvidia-container-runtime
+      args: []
+  dns:
+    - 1.1.1.1
+    - 8.8.8.8
+  ipv6: false
+
+# OCI (Oracle Cloud) — resource IDs for retry-vm.sh
+oci_tenancy_ocid: "ocid1.tenancy.oc1..aaaaaaaa2y3jd7l4yif3j5pqualzjyhazsg6emnzzi7cv5uhdxtk4id7z7xq"
+oci_subnet_ocid: "ocid1.subnet.oc1.eu-madrid-1.aaaaaaaaveqn3cl2s7luxznz2l5uqrldajxywrzqdp3q3buw37hxmcyt7skq"
+oci_image_id: "ocid1.image.oc1.eu-madrid-1.aaaaaaaao4vs524kobwm6guf7p6w2zcg32c2b753hldhfigjjpe4zp7nwxqq"
+
+mergerfs_config:
+  disks:
+    - device: /dev/disk/by-id/ata-WDC_WD30EFRX-68EUZN0_WD-WCC4NJ01TD41
+      mount: /mnt/disk1
+      fstype: xfs
+    - device: /dev/disk/by-id/ata-WDC_WD20EARS-00MVWB1_WD-WCAZA9020093
+      mount: /mnt/disk2
+      fstype: xfs
+    - device: /dev/disk/by-id/ata-WDC_WD20EADS-00S2B0_WD-WCAVY5192823
+      mount: /mnt/disk3
+      fstype: xfs
+    - device: /dev/disk/by-id/ata-WDC_WD30EFRX-68EUZN0_WD-WCC4N7LRE89F
+      mount: /mnt/disk4
+      fstype: xfs
+  pool:
+    name: storage
+    dest: /mnt/storage
+    options: defaults,allow_other,category.create=mfs,minfreespace=10G

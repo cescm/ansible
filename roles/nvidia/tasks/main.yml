@@ -1,0 +1,125 @@
+---
+- name: Check if running on Proxmox
+  command: which pveversion
+  register: is_proxmox
+  changed_when: false
+  failed_when: false
+
+- name: Get running kernel version
+  command: uname -r
+  register: kernel_version
+  changed_when: false
+  when: is_proxmox.rc == 0
+
+- name: Check if kernel headers are installed for this kernel
+  stat:
+    path: /lib/modules/{{ kernel_version.stdout }}/build
+  register: kernel_headers_dir
+  when: is_proxmox.rc == 0
+
+- name: Install kernel headers and firmware for DKMS
+  apt:
+    name:
+      - "proxmox-headers-{{ kernel_version.stdout }}"
+      - firmware-misc-nonfree
+      - dkms
+    state: present
+  when:
+    - is_proxmox.rc == 0
+    - not kernel_headers_dir.stat.exists
+
+- name: Remove old Debian nvidia packages
+  apt:
+    name:
+      - nvidia-driver
+      - nvidia-open-kernel-dkms
+      - nvidia-kernel-dkms
+    state: absent
+  when: is_proxmox.rc == 0
+
+- name: Check if NVIDIA driver is already installed
+  command: which nvidia-smi
+  register: nvidia_smi_check
+  changed_when: false
+  failed_when: false
+  when: is_proxmox.rc == 0
+
+- name: Blacklist nouveau kernel module
+  copy:
+    dest: /etc/modprobe.d/blacklist-nvidia-nouveau.conf
+    content: |
+      blacklist nouveau
+      options nouveau modeset=0
+  when:
+    - is_proxmox.rc == 0
+    - nvidia_smi_check.rc != 0
+
+- name: Unload nouveau module if loaded
+  command: modprobe -r nouveau
+  changed_when: false
+  failed_when: false
+  when:
+    - is_proxmox.rc == 0
+    - nvidia_smi_check.rc != 0
+
+- name: Download NVIDIA 580.159.03 driver
+  get_url:
+    url: https://download.nvidia.com/XFree86/Linux-x86_64/580.159.03/NVIDIA-Linux-x86_64-580.159.03.run
+    dest: /tmp/NVIDIA-Linux-x86_64-580.159.03.run
+    mode: '0755'
+  when:
+    - is_proxmox.rc == 0
+    - nvidia_smi_check.rc != 0
+
+- name: Install NVIDIA driver via .run installer
+  command: >
+    /tmp/NVIDIA-Linux-x86_64-580.159.03.run
+    --silent --no-x-check --no-questions --dkms
+    --install-libglvnd
+  args:
+    creates: /usr/bin/nvidia-smi
+  when:
+    - is_proxmox.rc == 0
+    - nvidia_smi_check.rc != 0
+  register: nvidia_driver_installed
+
+- name: Remove old container toolkit repo if broken
+  file:
+    path: /etc/apt/sources.list.d/nvidia-container-toolkit.list
+    state: absent
+  when: is_proxmox.rc == 0
+
+- name: Add NVIDIA Container Toolkit repository
+  apt_repository:
+    repo: "deb [trusted=yes] https://nvidia.github.io/libnvidia-container/stable/deb/amd64 /"
+    state: present
+  when: is_proxmox.rc == 0
+
+- name: Install nvidia-container-toolkit
+  apt:
+    name: nvidia-container-toolkit
+    state: present
+    update_cache: yes
+  when: is_proxmox.rc == 0
+
+- name: Check if NVIDIA module is loaded
+  command: nvidia-smi -L
+  register: nvidia_smi_loaded
+  changed_when: false
+  failed_when: false
+  when: is_proxmox.rc == 0
+
+- name: Reboot if nouveau is blocking NVIDIA module
+  command: shutdown -r +1 "NVIDIA driver installed — rebooting to load kernel module"
+  changed_when: false
+  when:
+    - is_proxmox.rc == 0
+    - nvidia_smi_loaded.rc != 0
+
+- name: Restart Docker to pick up nvidia-container-runtime
+  systemd:
+    name: docker
+    state: restarted
+    daemon_reload: yes
+  failed_when: false
+  when: is_proxmox.rc == 0

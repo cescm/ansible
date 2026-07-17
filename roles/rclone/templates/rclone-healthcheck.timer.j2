@@ -1,0 +1,10 @@
+[Unit]
+Description=Health check timer for rclone-movistar mount
+Requires=rclone-healthcheck.service
+
+[Timer]
+OnBootSec=1min
+OnUnitActiveSec=5min
+
+[Install]
+WantedBy=timers.target

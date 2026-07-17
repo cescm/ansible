@@ -1,0 +1,79 @@
+---
+- name: Provision all machines
+  hosts: all
+  gather_facts: yes
+  any_errors_fatal: false
+
+  pre_tasks:
+    - name: Clear stale apt locks
+      raw: rm -f /var/lib/apt/lists/lock /var/lib/dpkg/lock-frontend /var/lib/dpkg/lock /var/cache/apt/archives/lock
+      changed_when: false
+      tags: [apt, always]
+
+    - name: Run apt update (Debian/Ubuntu)
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+      when: ansible_os_family == "Debian"
+      tags: [apt]
+
+    - name: Upgrade all packages
+      apt:
+        upgrade: dist
+        autoremove: yes
+      register: apt_upgrade
+      when: ansible_os_family == "Debian"
+      tags: [apt]
+
+    - name: Ensure Go is installed (needed for opencode build)
+      apt:
+        name: golang-go
+        state: present
+      when: ansible_os_family == "Debian"
+      tags: [opencode, tools, apt]
+
+    - name: Install opencode via Go
+      command: go install github.com/anomalyco/opencode@latest
+      environment:
+        GOBIN: /usr/local/bin
+      args:
+        creates: /usr/local/bin/opencode
+      tags: [opencode, tools]
+
+  roles:
+    - role: common
+      tags: [common, base]
+
+    - role: ssh-hardening
+      tags: [ssh, security]
+
+    - role: docker
+      tags: [docker]
+
+    - role: rclone
+      tags: [rclone, storage]
+
+    - role: samba
+      tags: [samba, storage]
+
+    - role: scripts
+      tags: [scripts]
+
+    - role: nvidia
+      tags: [nvidia, gpu]
+
+    - role: mergerfs
+      tags: [mergerfs, storage]
+
+  post_tasks:
+    - name: Show provisioned machine info
+      debug:
+        msg:
+          - "Machine: {{ inventory_hostname }} ({{ ansible_host | default('N/A') }})"
+          - "OS: {{ ansible_distribution }} {{ ansible_distribution_version }} ({{ ansible_architecture }})"
+          - "RAM: {{ (ansible_memtotal_mb / 1024) | round(1) }}GB"
+          - "CPU: {{ ansible_processor_cores }} cores"
+          - "Docker: installed"
+          - "SSH: hardened"
+          - "UFW: {{ 'enabled' if (enable_ufw | default(true) | bool) else 'disabled (pve-firewall)' }}"
+      tags: [info]

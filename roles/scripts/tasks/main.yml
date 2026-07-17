@@ -1,0 +1,21 @@
+---
+- name: Create /mnt/scripts directory
+  file:
+    path: /mnt/scripts
+    state: directory
+    mode: '0755'
+
+- name: Deploy retry-vm.sh (templated with OCI config)
+  template:
+    src: templates/retry-vm.sh.j2
+    dest: /mnt/scripts/retry-vm.sh
+    mode: '0755'
+  when: oci_tenancy_ocid is defined
+
+- name: Deploy custom scripts
+  copy:
+    src: "{{ item }}"
+    dest: /mnt/scripts/
+    mode: '0755'
+  with_fileglob:
+    - files/*

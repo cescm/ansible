@@ -1,0 +1,26 @@
+---
+- name: Install acme.sh dependencies
+  apt:
+    name:
+      - curl
+      - socat
+    state: present
+
+- name: Download acme.sh installer
+  get_url:
+    url: https://get.acme.sh
+    dest: /tmp/get.acme.sh
+    mode: '0755'
+
+- name: Install acme.sh
+  command: /tmp/get.acme.sh --install --home /root/.acme.sh
+  args:
+    creates: /root/.acme.sh/acme.sh
+
+- name: Setup acme.sh daily cron for cert renewal
+  cron:
+    name: acme.sh cert renewal
+    minute: "42"
+    hour: "23"
+    job: '"/root/.acme.sh"/acme.sh --cron --home "/root/.acme.sh" > /dev/null'
+    state: present

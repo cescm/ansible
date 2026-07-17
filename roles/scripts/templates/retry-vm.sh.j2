@@ -1,0 +1,62 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+PROFILE="{{ oci_profile | default('DEFAULT') }}"
+TENANCY_OCID="{{ oci_tenancy_ocid }}"
+SUBNET_OCID="{{ oci_subnet_ocid }}"
+IMAGE_ID="{{ oci_image_id }}"
+AD="{{ oci_ad | default('NgDC:EU-MADRID-1-AD-1') }}"
+SHAPE="{{ oci_shape | default('VM.Standard.A1.Flex') }}"
+SSH_KEY="{{ oci_ssh_key | default('/root/.oci/oci-key.pub') }}"
+
+DELAY=120
+LOG="/root/retry-vm.log"
+
+echo "[$(date +'%Y-%m-%d %H:%M:%S')] === Retry loop iniciado ===" | tee -a "$LOG"
+echo "[$(date +'%Y-%m-%d %H:%M:%S')] Target: A1.Flex (4 OCPU / 24 GB / 200 GB) en eu-madrid-1" | tee -a "$LOG"
+echo "[$(date +'%Y-%m-%d %H:%M:%S')] Perfil: $PROFILE | Subnet: $SUBNET_OCID" | tee -a "$LOG"
+echo "" | tee -a "$LOG"
+
+attempt=1
+while true; do
+  echo "[$(date +'%Y-%m-%d %H:%M:%S')] Intento #$attempt..." | tee -a "$LOG"
+
+  out=$(oci compute instance launch --profile "$PROFILE" \
+    --compartment-id "$TENANCY_OCID" \
+    --availability-domain "$AD" \
+    --display-name "oci-madrid-1-vm" \
+    --shape "$SHAPE" \
+    --shape-config '{"memory_in_gbs":24,"ocpus":4}' \
+    --subnet-id "$SUBNET_OCID" \
+    --assign-public-ip true \
+    --boot-volume-size-in-gbs 200 \
+    --image-id "$IMAGE_ID" \
+    --ssh-authorized-keys-file "$SSH_KEY" \
+    2>&1) || true
+
+  if echo "$out" | grep -q "\"lifecycle-state\": \"RUNNING\""; then
+    INSTANCE_ID=$(echo "$out" | jq -r '.data.id')
+    PUBLIC_IP=$(oci compute instance list-vnics --profile "$PROFILE" --instance-id "$INSTANCE_ID" --query "data[0].\"public-ip\"" --raw-output 2>/dev/null || echo "asignándose...")
+    echo "[$(date +'%Y-%m-%d %H:%M:%S')] ✓ VM CREADA!" | tee -a "$LOG"
+    echo "[$(date +'%Y-%m-%d %H:%M:%S')] Instance OCID: $INSTANCE_ID" | tee -a "$LOG"
+    echo "[$(date +'%Y-%m-%d %H:%M:%S')] IP pública: $PUBLIC_IP" | tee -a "$LOG"
+    exit 0
+  elif echo "$out" | grep -q "Out of host capacity"; then
+    echo "[$(date +'%Y-%m-%d %H:%M:%S')] Sin capacidad. Reintentando en ${DELAY}s..." | tee -a "$LOG"
+    sleep "$DELAY"
+    attempt=$((attempt + 1))
+  elif echo "$out" | grep -q "TooManyRequests\|Too many requests"; then
+    echo "[$(date +'%Y-%m-%d %H:%M:%S')] Rate limit (429). Esperando 180s..." | tee -a "$LOG"
+    sleep 180
+    attempt=$((attempt + 1))
+  elif echo "$out" | grep -q "LimitExceeded"; then
+    echo "[$(date +'%Y-%m-%d %H:%M:%S')] Límite de servicio excedido. Esperando 180s..." | tee -a "$LOG"
+    sleep 180
+    attempt=$((attempt + 1))
+  else
+    echo "[$(date +'%Y-%m-%d %H:%M:%S')] Error inesperado: $out" | tee -a "$LOG"
+    echo "[$(date +'%Y-%m-%d %H:%M:%S')] Reintentando en ${DELAY}s..." | tee -a "$LOG"
+    sleep "$DELAY"
+    attempt=$((attempt + 1))
+  fi
+done

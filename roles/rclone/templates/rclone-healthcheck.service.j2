@@ -1,0 +1,6 @@
+[Unit]
+Description=Rclone mount health check
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/rclone-healthcheck.sh

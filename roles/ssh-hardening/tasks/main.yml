@@ -1,0 +1,53 @@
+---
+- name: Ensure SSH host keys are configured
+  lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"
+    state: present
+    mode: '0644'
+  loop:
+    - { regexp: '^#?HostKey /etc/ssh/ssh_host_rsa_key', line: 'HostKey /etc/ssh/ssh_host_rsa_key' }
+    - { regexp: '^#?HostKey /etc/ssh/ssh_host_ecdsa_key', line: 'HostKey /etc/ssh/ssh_host_ecdsa_key' }
+    - { regexp: '^#?HostKey /etc/ssh/ssh_host_ed25519_key', line: 'HostKey /etc/ssh/ssh_host_ed25519_key' }
+  notify: restart sshd
+
+- name: Harden SSH configuration
+  lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"
+    state: present
+    mode: '0644'
+    validate: '/usr/sbin/sshd -T -f %s'
+  loop:
+    - { regexp: '^#?PermitRootLogin', line: 'PermitRootLogin {{ ssh_permit_root_login | default(\"no\") }}' }
+    - { regexp: '^#?PasswordAuthentication', line: 'PasswordAuthentication no' }
+    - { regexp: '^#?PubkeyAuthentication', line: 'PubkeyAuthentication yes' }
+    - { regexp: '^#?ChallengeResponseAuthentication', line: 'ChallengeResponseAuthentication no' }
+    - { regexp: '^#?UsePAM', line: 'UsePAM no' }
+    - { regexp: '^#?MaxAuthTries', line: 'MaxAuthTries 3' }
+    - { regexp: '^#?ClientAliveInterval', line: 'ClientAliveInterval 300' }
+    - { regexp: '^#?ClientAliveCountMax', line: 'ClientAliveCountMax 2' }
+  notify: restart sshd
+
+- name: Install fail2ban
+  become: yes
+  raw: rm -f /var/lib/dpkg/lock-frontend /var/lib/dpkg/lock /var/cache/apt/archives/lock && apt-get install -y -qq fail2ban
+
+- name: Configure fail2ban for SSH
+  copy:
+    dest: /etc/fail2ban/jail.local
+    content: |
+      [DEFAULT]
+      bantime = 3600
+      findtime = 600
+      maxretry = 5
+
+      [sshd]
+      enabled = true
+      port = ssh
+      logpath = %(sshd_log)s
+      backend = %(sshd_backend)s
+    mode: '0644'
+  notify: restart fail2ban

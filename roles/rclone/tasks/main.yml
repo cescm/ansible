@@ -1,0 +1,118 @@
+---
+- name: Stat rclone-movistar binary
+  stat:
+    path: /usr/local/bin/rclone-movistar
+  register: rclone_bin
+
+- name: Install Go and Git for rclone build
+  apt:
+    name:
+      - golang-go
+      - git
+    state: present
+  when: not rclone_bin.stat.exists
+
+- name: Clone rclone PR #9191 (Movistar Cloud backend)
+  git:
+    repo: https://github.com/rclone/rclone.git
+    dest: /tmp/rclone-build
+    version: refs/pull/9191/head
+    depth: 1
+  when: not rclone_bin.stat.exists
+
+- name: Build rclone-movistar binary
+  command:
+    cmd: go build -ldflags="-s -w" -o /usr/local/bin/rclone-movistar .
+    chdir: /tmp/rclone-build
+  when: not rclone_bin.stat.exists
+
+- name: Clean up build directory
+  file:
+    path: /tmp/rclone-build
+    state: absent
+  when: not rclone_bin.stat.exists
+
+- name: Create rclone mount directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+  loop:
+    - /mnt/movistar
+    - /mnt/movistar_enc
+    - /mnt/movistar_cache
+    - /mnt/movistar_raw_cache
+
+- name: Create rclone config directory
+  file:
+    path: /root/.config/rclone
+    state: directory
+    mode: '0700'
+
+- name: Deploy rclone config from vault
+  copy:
+    content: "{{ rclone_config_content }}"
+    dest: /root/.config/rclone/rclone.conf
+    mode: '0600'
+  when: rclone_config_content is defined
+
+- name: Deploy rclone healthcheck script
+  copy:
+    src: rclone-healthcheck.sh
+    dest: /usr/local/bin/rclone-healthcheck.sh
+    mode: '0755'
+
+- name: Deploy rclone-movistar systemd unit (raw)
+  template:
+    src: rclone-movistar.service.j2
+    dest: /etc/systemd/system/rclone-movistar.service
+    mode: '0644'
+  notify: reload systemd
+
+- name: Deploy rclone-movistar-crypt systemd unit
+  template:
+    src: rclone-movistar-crypt.service.j2
+    dest: /etc/systemd/system/rclone-movistar-crypt.service
+    mode: '0644'
+  notify: reload systemd
+
+- name: Deploy rclone-healthcheck systemd unit
+  template:
+    src: rclone-healthcheck.service.j2
+    dest: /etc/systemd/system/rclone-healthcheck.service
+    mode: '0644'
+  notify: reload systemd
+
+- name: Deploy rclone-healthcheck timer
+  template:
+    src: rclone-healthcheck.timer.j2
+    dest: /etc/systemd/system/rclone-healthcheck.timer
+    mode: '0644'
+  notify: reload systemd
+
+- name: Stat rclone config
+  stat:
+    path: /root/.config/rclone/rclone.conf
+  register: rclone_config
+
+- name: Enable rclone services on boot
+  systemd:
+    name: "{{ item }}"
+    enabled: yes
+    daemon_reload: yes
+  loop:
+    - rclone-movistar.service
+    - rclone-movistar-crypt.service
+    - rclone-healthcheck.timer
+  when: rclone_config.stat.exists
+
+- name: Start rclone services
+  systemd:
+    name: "{{ item }}"
+    state: started
+    daemon_reload: yes
+  loop:
+    - rclone-movistar.service
+    - rclone-movistar-crypt.service
+    - rclone-healthcheck.timer
+  when: rclone_config.stat.exists

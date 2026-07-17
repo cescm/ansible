@@ -1,0 +1,39 @@
+---
+- name: Install mergerfs
+  apt:
+    name: mergerfs
+    state: present
+
+- name: Create disk mount points
+  file:
+    path: "{{ item.mount }}"
+    state: directory
+    mode: '0755'
+  loop: "{{ mergerfs_config.disks }}"
+
+- name: Create mergerfs pool directory
+  file:
+    path: "{{ mergerfs_config.pool.dest }}"
+    state: directory
+    mode: '0755'
+
+- name: Add data disks to /etc/fstab
+  mount:
+    path: "{{ item.mount }}"
+    src: "{{ item.device }}"
+    fstype: "{{ item.fstype }}"
+    opts: defaults,nofail
+    state: present
+  loop: "{{ mergerfs_config.disks }}"
+
+- name: Add mergerfs pool to /etc/fstab
+  mount:
+    path: "{{ mergerfs_config.pool.dest }}"
+    src: "{{ mergerfs_config.disks | map(attribute='mount') | join(':') }}"
+    fstype: fuse.mergerfs
+    opts: "defaults,allow_other,{{ mergerfs_config.pool.options | default('category.create=mfs,minfreespace=10G') }}"
+    state: present
+
+- name: Mount all filesystems
+  command: mount -a
+  changed_when: false

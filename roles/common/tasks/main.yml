@@ -1,0 +1,53 @@
+---
+- name: Set timezone to Europe/Madrid
+  timezone:
+    name: Europe/Madrid
+
+- name: Install base packages
+  apt:
+    name:
+      - curl
+      - git
+      - vim
+      - htop
+      - tmux
+      - net-tools
+      - ca-certificates
+      - gnupg
+      - fail2ban
+    state: present
+    update_cache: yes
+    cache_valid_time: 3600
+
+- name: Install UFW
+  apt:
+    name: ufw
+    state: present
+  when: enable_ufw | default(true) | bool
+
+- name: Install extra packages
+  apt:
+    name: "{{ extra_packages }}"
+    state: present
+  when: extra_packages | default([]) | length > 0
+
+- name: Configure UFW defaults
+  ufw:
+    direction: "{{ item.dir }}"
+    policy: "{{ item.pol }}"
+  loop:
+    - { dir: incoming, pol: deny }
+    - { dir: outgoing, pol: allow }
+  when: enable_ufw | default(true) | bool
+
+- name: Allow SSH through UFW
+  ufw:
+    rule: allow
+    port: ssh
+    proto: tcp
+  when: enable_ufw | default(true) | bool
+
+- name: Enable UFW
+  ufw:
+    state: enabled
+  when: enable_ufw | default(true) | bool

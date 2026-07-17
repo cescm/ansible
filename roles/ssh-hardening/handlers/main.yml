@@ -1,0 +1,12 @@
+---
+- name: restart sshd
+  systemd:
+    name: "{{ 'ssh' if ansible_facts['os_family'] == 'Debian' else 'sshd' }}"
+    state: restarted
+    daemon_reload: yes
+
+- name: restart fail2ban
+  systemd:
+    name: fail2ban
+    state: restarted
+    enabled: yes
