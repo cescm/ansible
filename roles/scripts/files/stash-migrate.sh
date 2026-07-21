@@ -104,7 +104,7 @@ WHERE path = '$STASH_PATH_NEW';
 echo ""
 echo "=== SQL A EJECUTAR (Fusión Inteligente) ==="
 echo "$SQL_MASTER"
-echo "========================================"
+echo "======================================="
 
 read -p "Presiona cualquier tecla para ejecutar la migración en BBDD... " -n1 -s
 echo ""

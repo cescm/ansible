@@ -14,7 +14,8 @@ LOG="/root/retry-vm.log"
 
 echo "[$(date +'%Y-%m-%d %H:%M:%S')] === Retry loop iniciado ===" | tee -a "$LOG"
 echo "[$(date +'%Y-%m-%d %H:%M:%S')] Target: A1.Flex (4 OCPU / 24 GB / 200 GB) en eu-madrid-1" | tee -a "$LOG"
-echo "[$(date +'%Y-%m-%d %H:%M:%S')] Perfil: $PROFILE | Subnet: $SUBNET_OCID" | tee -a "$LOG"
+echo "[$(date +'%Y-%m-%d %H:%M:%S')] Perfil: $PROFILE" | tee -a "$LOG"
+echo "[$(date +'%Y-%m-%d %H:%M:%S')] Subnet: $SUBNET_OCID" | tee -a "$LOG"
 echo "" | tee -a "$LOG"
 
 attempt=1

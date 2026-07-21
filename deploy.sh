@@ -8,7 +8,8 @@ VAULT_PASS_FILE="${VAULT_PASS_FILE:-$SCRIPT_DIR/.vault_pass}"
 
 if [ ! -f "$VAULT_PASS_FILE" ]; then
   echo "ERROR: Vault password file not found at $VAULT_PASS_FILE"
-  echo "Create it with: echo 'your-vault-password' > $VAULT_PASS_FILE && chmod 600 $VAULT_PASS_FILE"
+  echo "Create it with:"
+  echo "  echo 'your-vault-password' > $VAULT_PASS_FILE && chmod 600 $VAULT_PASS_FILE"
   exit 1
 fi
 
