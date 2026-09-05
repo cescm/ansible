@@ -99,6 +99,26 @@
     mode: '0644'
   notify: reload systemd
 
+- name: Deploy jellyfin watchdog script
+  copy:
+    src: jellyfin-watchdog.sh
+    dest: /usr/local/bin/jellyfin-watchdog.sh
+    mode: '0755'
+
+- name: Deploy jellyfin watchdog systemd unit
+  template:
+    src: jellyfin-watchdog.service.j2
+    dest: /etc/systemd/system/jellyfin-watchdog.service
+    mode: '0644'
+  notify: reload systemd
+
+- name: Deploy jellyfin watchdog timer
+  template:
+    src: jellyfin-watchdog.timer.j2
+    dest: /etc/systemd/system/jellyfin-watchdog.timer
+    mode: '0644'
+  notify: reload systemd
+
 - name: Stat rclone config
   stat:
     path: /root/.config/rclone/rclone.conf
@@ -114,6 +134,7 @@
     - rclone-movistar-crypt.service
     - rclone-movistar-webdav.service
     - rclone-healthcheck.timer
+    - jellyfin-watchdog.timer
   when: rclone_config.stat.exists
 
 - name: Start rclone services
@@ -126,4 +147,5 @@
     - rclone-movistar-crypt.service
     - rclone-movistar-webdav.service
     - rclone-healthcheck.timer
+    - jellyfin-watchdog.timer
   when: rclone_config.stat.exists

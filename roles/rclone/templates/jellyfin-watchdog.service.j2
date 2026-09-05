@@ -1,0 +1,6 @@
+[Unit]
+Description=Jellyfin restart watchdog (rclone WebDAV mount check)
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/jellyfin-watchdog.sh
