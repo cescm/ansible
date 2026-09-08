@@ -17,7 +17,7 @@ ExecStart=/usr/bin/rclone mount movistar_webdav_enc: /mnt/movistar_webdav \
   --uid 1000 \
   --gid 1000 \
   --umask 002 \
-  --vfs-cache-mode off \
+  --vfs-cache-mode full \
   --vfs-cache-max-size 100G \
   --vfs-write-back 5s \
   --cache-dir=/mnt/movistar_webdav_cache \
