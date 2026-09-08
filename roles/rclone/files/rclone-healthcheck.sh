@@ -1,28 +1,34 @@
 #!/bin/bash
 set -euo pipefail
 
-MOUNT_RAW="/mnt/movistar"
-MOUNT_CRYPT="/mnt/movistar_enc"
 MOUNT_WEBDAV="/mnt/movistar_webdav"
-HOST="micloud.movistar.es"
+JELLYFIN_CONTAINER="jellyfin"
+JELLYFIN_MEDIA_PATH="/media2"
 LOG_TAG="rclone-healthcheck"
-
-if ! getent hosts "$HOST" > /dev/null 2>&1; then
-    logger -t "$LOG_TAG" "DNS resolution failed for $HOST, skipping check"
-    exit 0
-fi
-
-if ! timeout 10 ls "$MOUNT_RAW" > /dev/null 2>&1; then
-    logger -t "$LOG_TAG" "Mount $MOUNT_RAW not responding, restarting raw service"
-    systemctl restart rclone-movistar.service
-fi
-
-if ! timeout 10 ls "$MOUNT_CRYPT" > /dev/null 2>&1; then
-    logger -t "$LOG_TAG" "Mount $MOUNT_CRYPT not responding, restarting crypt service"
-    systemctl restart rclone-movistar-crypt.service
-fi
+NEEDED_RESTART=false
 
 if ! timeout 10 ls "$MOUNT_WEBDAV" > /dev/null 2>&1; then
     logger -t "$LOG_TAG" "Mount $MOUNT_WEBDAV not responding, restarting webdav service"
     systemctl restart rclone-movistar-webdav.service
+    NEEDED_RESTART=true
+fi
+
+# If rclone was restarted, the FUSE superblock changed and Jellyfin's
+# Docker bind mount is now stale. Restart Jellyfin to pick up the new mount.
+if [ "$NEEDED_RESTART" = true ]; then
+    logger -t "$LOG_TAG" "rclone was restarted, restarting $JELLYFIN_CONTAINER to refresh stale bind mount"
+    docker restart "$JELLYFIN_CONTAINER" 2>&1 | logger -t "$LOG_TAG" || \
+        logger -t "$LOG_TAG" "WARNING: failed to restart $JELLYFIN_CONTAINER"
+    exit 0
+fi
+
+# Also check Jellyfin container mount even if the host mount looks healthy.
+# The bind mount can be stale from a previous rclone restart that already
+# recovered on the host.
+if docker ps --format '{{.Names}}' 2>/dev/null | grep -qxF "$JELLYFIN_CONTAINER"; then
+    if ! timeout 10 docker exec "$JELLYFIN_CONTAINER" ls "$JELLYFIN_MEDIA_PATH" > /dev/null 2>&1; then
+        logger -t "$LOG_TAG" "Jellyfin container mount $JELLYFIN_MEDIA_PATH is stale, restarting container"
+        docker restart "$JELLYFIN_CONTAINER" 2>&1 | logger -t "$LOG_TAG" || \
+            logger -t "$LOG_TAG" "WARNING: failed to restart $JELLYFIN_CONTAINER"
+    fi
 fi
