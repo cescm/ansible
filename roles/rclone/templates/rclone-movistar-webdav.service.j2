@@ -17,12 +17,12 @@ ExecStart=/usr/bin/rclone mount movistar_webdav_enc: /mnt/movistar_webdav \
   --uid 1000 \
   --gid 1000 \
   --umask 002 \
-  --vfs-cache-mode full \
+  --vfs-cache-mode off \
   --vfs-cache-max-size 100G \
   --vfs-write-back 5s \
   --cache-dir=/mnt/movistar_webdav_cache \
-  --vfs-read-chunk-size 4M \
-  --vfs-read-chunk-size-limit 64M \
+  --vfs-read-chunk-size 4294967296 \
+  --vfs-read-chunk-size-limit 4294967296 \
   --buffer-size 16M \
   --vfs-read-wait 20ms \
   --dir-cache-time 5m \
