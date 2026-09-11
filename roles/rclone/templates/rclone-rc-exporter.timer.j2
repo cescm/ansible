@@ -1,0 +1,17 @@
+# rclone-rc-exporter.timer
+# ------------------------------------------------------------------
+# Dispara rclone-rc-exporter.service (oneshot) cada 30s. Cadena de
+# monitorizacion: mount rclone RC API -> script textfile ->
+# node-exporter (--collector.textfile.directory) -> Prometheus ->
+# dashboard Grafana 'Rclone Mounts' (uid rclone-mounts).
+# ------------------------------------------------------------------
+[Unit]
+Description=Run rclone RC exporter every 30 seconds
+
+[Timer]
+OnBootSec=30s
+OnUnitActiveSec=30s
+AccuracySec=1s
+
+[Install]
+WantedBy=timers.target

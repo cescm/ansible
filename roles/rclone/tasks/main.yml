@@ -1,4 +1,8 @@
 ---
+## rclone role — Movistar WebDAV mount stack (sincronizado con el estado live en trastero01)
+## Cadenas: rclone mount movistar_webdav_enc (crypt) -> webdav (o2cloud-gateway :8088/dav/encrypted) -> Movistar micloud
+## Monitorización: --rc --rc-addr 127.0.0.1:5572 + rclone-rc-to-prometheus.sh (timer 30s) -> textfile -> node-exporter -> Prometheus -> Grafana
+
 - name: Create rclone mount directories
   file:
     path: "{{ item }}"
@@ -21,20 +25,46 @@
     mode: '0600'
   when: rclone_config_content is defined
 
-- name: Deploy rclone healthcheck script
+- name: Deploy rclone healthcheck script (webdav)
   copy:
     src: rclone-healthcheck.sh
     dest: /usr/local/bin/rclone-healthcheck.sh
     mode: '0755'
 
-- name: Deploy rclone-movistar-webdav systemd unit
+- name: Deploy rclone cache-clean script (ExecStartPre)
+  copy:
+    src: rclone-cache-clean.sh
+    dest: /usr/local/bin/rclone-cache-clean.sh
+    mode: '0755'
+
+- name: Deploy rclone RC-to-textfile exporter script
+  copy:
+    src: rclone-rc-to-prometheus.sh
+    dest: /usr/local/bin/rclone-rc-to-prometheus.sh
+    mode: '0755'
+
+- name: Deploy rclone-movistar-webdav systemd unit (mount)
   template:
     src: rclone-movistar-webdav.service.j2
     dest: /etc/systemd/system/rclone-movistar-webdav.service
     mode: '0644'
   notify: reload systemd
 
-- name: Deploy rclone-healthcheck systemd unit
+- name: Deploy rclone RC exporter service (oneshot)
+  template:
+    src: rclone-rc-exporter.service.j2
+    dest: /etc/systemd/system/rclone-rc-exporter.service
+    mode: '0644'
+  notify: reload systemd
+
+- name: Deploy rclone RC exporter timer (30s)
+  template:
+    src: rclone-rc-exporter.timer.j2
+    dest: /etc/systemd/system/rclone-rc-exporter.timer
+    mode: '0644'
+  notify: reload systemd
+
+- name: Deploy rclone-healthcheck service (oneshot)
   template:
     src: rclone-healthcheck.service.j2
     dest: /etc/systemd/system/rclone-healthcheck.service
@@ -81,6 +111,7 @@
   loop:
     - rclone-movistar-webdav.service
     - rclone-healthcheck.timer
+    - rclone-rc-exporter.timer
     - jellyfin-watchdog.timer
   when: rclone_config.stat.exists
 
@@ -92,5 +123,6 @@
   loop:
     - rclone-movistar-webdav.service
     - rclone-healthcheck.timer
+    - rclone-rc-exporter.timer
     - jellyfin-watchdog.timer
   when: rclone_config.stat.exists
