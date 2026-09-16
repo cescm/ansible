@@ -1,15 +1,41 @@
+# ============================================================================
+# rclone-movistar-webdav.service
+# ============================================================================
+# Mounts Movistar Cloud as a WebDAV + crypt filesystem on /mnt/movistar_webdav.
+#
+# Chain: movistar_webdav_enc (rclone crypt remote) -> webdav remote
+#   (o2cloud-gateway container, http://localhost:8088/dav/encrypted) ->
+#   Movistar micloud backend. Jellyfin consumes /media3 (bind of this mount).
+#
+# Key flags:
+#   --vfs-cache-mode full        : cache reads + writes locally (Samba/Jellyfin)
+#   --vfs-read-chunk-size 128M   : large sequential video reads
+#   --rc --rc-addr 127.0.0.1:5572: RC API for monitoring
+#                                  (rclone-rc-to-prometheus.sh, see
+#                                  rclone-rc-exporter.service/.timer)
+#
+# Related units:
+#   rclone-cache-clean.sh   (ExecStartPre: wipes VFS cache on every start)
+#   rclone-healthcheck.timer (every 5 min: liveness + jellyfin bind refresh)
+#   rclone-generate-rclone.service (Legacy: NO).
+#
+# Logs: /var/log/rclone-webdav.log (DEBUG level).
+# ============================================================================
 [Unit]
 Description=Rclone mount Movistar (WebDAV + crypt)
 Wants=network-online.target
 After=network-online.target docker.service
 ConditionPathExists=/root/.config/rclone/rclone.conf
+# No start rate limit: the mount may legitimately crash/restart repeatedly.
+StartLimitIntervalSec=0
 
 [Service]
 Type=notify
 User=root
 Group=root
-StartLimitIntervalSec=0
 
+# Wipe VFS cache so the mount always starts clean (stale entries removed).
+ExecStartPre=/usr/local/bin/rclone-cache-clean.sh
 ExecStart=/usr/bin/rclone mount movistar_webdav_enc: /mnt/movistar_webdav \
   --config /root/.config/rclone/rclone.conf \
   --allow-other \
@@ -21,8 +47,8 @@ ExecStart=/usr/bin/rclone mount movistar_webdav_enc: /mnt/movistar_webdav \
   --vfs-cache-max-size 100G \
   --vfs-write-back 5s \
   --cache-dir=/mnt/movistar_webdav_cache \
-  --vfs-read-chunk-size 4294967296 \
-  --vfs-read-chunk-size-limit 4294967296 \
+  --vfs-read-chunk-size 134217728 \
+  --vfs-read-chunk-size-limit 134217728 \
   --buffer-size 16M \
   --vfs-read-wait 20ms \
   --dir-cache-time 5m \
@@ -33,10 +59,14 @@ ExecStart=/usr/bin/rclone mount movistar_webdav_enc: /mnt/movistar_webdav \
   --low-level-retries 30 \
   --vfs-cache-max-age 72h \
   --async-read \
-  --log-level INFO \
+  --rc \
+  --rc-addr 127.0.0.1:5572 \
+  --log-level DEBUG \
   --log-file /var/log/rclone-webdav.log
 
+# Mark mount shared so Jellyfin's Docker bind can see FUSE changes.
 ExecStartPost=/bin/bash -c 'for i in $$(seq 1 10); do mountpoint -q /mnt/movistar_webdav && mount --make-shared /mnt/movistar_webdav && break; sleep 1; done'
+# Lazy unmount so a restart does not hang on open files.
 ExecStop=/bin/fusermount3 -uz /mnt/movistar_webdav
 Restart=on-failure
 RestartSec=20s
