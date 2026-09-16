@@ -1,6 +1,9 @@
 ---
 - name: Provision all machines
-  hosts: all
+  # Intentionally scoped to trastero01 only (N4+ labs are declared in the
+  # inventory but not yet provisioned: VMs 100/101 and LXC 200 need their
+  # SSH access and role subsets wired up first — see inventory proxmox-vms).
+  hosts: trastero01
   gather_facts: yes
   any_errors_fatal: false
 
