@@ -1,7 +1,7 @@
 ---
-## rclone role — Movistar WebDAV mount stack (sincronizado con el estado live en trastero01)
-## Cadenas: rclone mount movistar_webdav_enc (crypt) -> webdav (o2cloud-gateway :8088/dav/encrypted) -> Movistar micloud
-## Monitorización: --rc --rc-addr 127.0.0.1:5572 + rclone-rc-to-prometheus.sh (timer 30s) -> textfile -> node-exporter -> Prometheus -> Grafana
+## rclone role — Movistar WebDAV mount stack (synced with live state on trastero01)
+## Chain: rclone mount movistar_webdav_enc (crypt) -> webdav (o2cloud-gateway :8088/dav/encrypted) -> Movistar micloud
+## Monitoring: --rc --rc-addr 127.0.0.1:5572 + rclone-rc-to-prometheus.sh (timer 30s) -> textfile -> node-exporter -> Prometheus -> Grafana
 
 - name: Create rclone mount directories
   file:

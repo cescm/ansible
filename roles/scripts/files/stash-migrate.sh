@@ -8,53 +8,53 @@ DOCKER_LOCAL="/data"
 DOCKER_REMOTE="/data_remote"
 
 TARGET="${1%/}"
-if [ -z "$TARGET" ]; then echo "Uso: stash-migrate-safe.sh <carpeta>"; exit 1; fi
+if [ -z "$TARGET" ]; then echo "Usage: stash-migrate-safe.sh <folder>"; exit 1; fi
 
 STASH_PATH_OLD="$DOCKER_LOCAL/$TARGET"
 STASH_PATH_NEW="$DOCKER_REMOTE/$TARGET"
 
 FULL_LOCAL_PATH_HOST="$LOCAL_BASE_HOST/$TARGET"
 
-echo "=== Iniciando Migración Segura para: $TARGET ==="
+echo "=== Starting Safe Migration for: $TARGET ==="
 
 if [ ! -d "$FULL_LOCAL_PATH_HOST" ]; then
-    echo "ERROR: La carpeta '$TARGET' no existe en el disco local."
-    echo "Ruta buscada: $FULL_LOCAL_PATH_HOST"
+    echo "ERROR: Folder '$TARGET' does not exist on the local disk."
+    echo "Searched path: $FULL_LOCAL_PATH_HOST"
     exit 1
 fi
-echo "[0/4] Validación de carpeta superada."
+echo "[0/4] Folder validation passed."
 
-echo "[1/4] Deteniendo contenedor Stash..."
+echo "[1/4] Stopping Stash container..."
 docker stop stash
 
-echo "Forzando volcado de seguridad (Checkpoint Pre-Backup)..."
+echo "Forcing safety checkpoint flush (Pre-Backup Checkpoint)..."
 echo "SQL: PRAGMA wal_checkpoint(TRUNCATE);"
 sqlite3 "$DB_PATH" "PRAGMA wal_checkpoint(TRUNCATE);"
-echo "  -> Volcado completado."
+echo "  -> Flush completed."
 
-echo "[2/4] Creando copia de seguridad de la base de datos..."
+echo "[2/4] Creating database backup..."
 BACKUP_FILE="$DB_DIR/stash_backup_$(date +%Y%m%d_%H%M%S).tar"
 tar -cf "$BACKUP_FILE" "$DB_DIR"/stash-go.sqlite*
-echo "  -> Backup guardado en: $BACKUP_FILE"
+echo "  -> Backup saved to: $BACKUP_FILE"
 
-echo "[3/4] Comprobando integridad de SQLite..."
+echo "[3/4] Checking SQLite integrity..."
 echo "SQL: PRAGMA integrity_check;"
 INTEGRITY=$(sqlite3 "$DB_PATH" "PRAGMA integrity_check;")
 if [ "$INTEGRITY" != "ok" ]; then
-    echo "ERROR CRÍTICO: La base de datos está corrupta o bloqueada."
-    echo "Integridad: $INTEGRITY"
-    echo "Iniciando contenedor y abortando la migración..."
+    echo "CRITICAL ERROR: The database is corrupt or locked."
+    echo "Integrity: $INTEGRITY"
+    echo "Starting container and aborting the migration..."
     docker start stash
     exit 1
 fi
-echo "  -> Integridad OK."
+echo "  -> Integrity OK."
 
-echo "--- ESTADO ACTUAL: Tabla 'folders' ---"
+echo "--- CURRENT STATE: 'folders' table ---"
 echo "SQL: SELECT id, basename, path, parent_folder_id FROM folders WHERE path LIKE '%$TARGET%';"
 sqlite3 -header -column "$DB_PATH" "SELECT id, basename, path, parent_folder_id FROM folders WHERE path LIKE '%$TARGET%';"
 echo "----------------------------------------"
 
-echo "--- ESTADO ACTUAL: Tabla 'files' ---"
+echo "--- CURRENT STATE: 'files' table ---"
 echo "SQL: SELECT id, basename, parent_folder_id FROM files WHERE basename LIKE '%$TARGET%';"
 sqlite3 -header -column "$DB_PATH" "SELECT id, basename, parent_folder_id FROM files WHERE basename LIKE '%$TARGET%';"
 echo "----------------------------------------"
@@ -63,7 +63,7 @@ RED='\033[0;31m'
 BOLD_RED='\033[1;31m'
 NC='\033[0m'
 echo ""
-echo "=== COMPROBANDO DUPLICADOS ==="
+echo "=== CHECKING FOR DUPLICATES ==="
 DUPLICADOS=$(sqlite3 -header -column "$DB_PATH" "
 SELECT fi_local.id as id_local, fi_local.basename, fi_remote.id as id_remoto
 FROM files fi_local
@@ -73,17 +73,17 @@ WHERE fi_local.parent_folder_id = (SELECT id FROM folders WHERE path = '$STASH_P
 ORDER BY fi_local.basename;
 ")
 if [ -z "$DUPLICADOS" ]; then
-    echo "  -> Sin duplicados. Migración segura."
+    echo "  -> No duplicates. Migration is safe."
 else
-    echo -e "${BOLD_RED}⚠️  ATENCIÓN: Estos archivos ya existen en la carpeta remota y serán SALTADOS:${NC}"
+    echo -e "${BOLD_RED}⚠️  ATTENTION: These files already exist in the remote folder and will be SKIPPED:${NC}"
     echo ""
     echo -e "${RED}${DUPLICADOS}${NC}"
     echo ""
-    echo -e "${BOLD_RED}Si quieres reemplazar alguno, cancela con Ctrl+C y gestiona el duplicado manualmente.${NC}"
+    echo -e "${BOLD_RED}If you want to replace any of them, cancel with Ctrl+C and handle the duplicate manually.${NC}"
 fi
 echo "=============================="
 
-echo "[4/4] Ejecutando Fusión Inteligente en Base de Datos..."
+echo "[4/4] Running Smart Merge on database..."
 SQL_MASTER="
 UPDATE files
 SET parent_folder_id = (SELECT id FROM folders WHERE path = '$STASH_PATH_NEW')
@@ -102,43 +102,43 @@ WHERE path = '$STASH_PATH_NEW';
 "
 
 echo ""
-echo "=== SQL A EJECUTAR (Fusión Inteligente) ==="
+echo "=== SQL TO EXECUTE (Smart Merge) ==="
 echo "$SQL_MASTER"
 echo "======================================="
 
-read -p "Presiona cualquier tecla para ejecutar la migración en BBDD... " -n1 -s
+read -p "Press any key to run the DB migration... " -n1 -s
 echo ""
 
 sqlite3 "$DB_PATH" "$SQL_MASTER"
-echo "  -> Base de datos actualizada correctamente."
+echo "  -> Database updated successfully."
 
-echo "--- NUEVO ESTADO: Tabla 'folders' ---"
+echo "--- NEW STATE: 'folders' table ---"
 echo "SQL: SELECT id, basename, path, parent_folder_id FROM folders WHERE path LIKE '%$TARGET%';"
 sqlite3 -header -column "$DB_PATH" "SELECT id, basename, path, parent_folder_id FROM folders WHERE path LIKE '%$TARGET%';"
 echo "----------------------------------------"
 
-echo "--- NUEVO ESTADO: Tabla 'files' ---"
+echo "--- NEW STATE: 'files' table ---"
 echo "SQL: SELECT id, basename, parent_folder_id FROM files WHERE basename LIKE '%$TARGET%';"
 sqlite3 -header -column "$DB_PATH" "SELECT id, basename, parent_folder_id FROM files WHERE basename LIKE '%$TARGET%';"
 echo "----------------------------------------"
 
-echo "Total de archivos encontrados:"
+echo "Total files found:"
 sqlite3 "$DB_PATH" "SELECT COUNT(*) FROM files WHERE basename LIKE '%$TARGET%';"
 echo "----------------------------------------"
 
 echo ""
-read -p "Presiona cualquier tecla para forzar el volcado a disco (Checkpoint)... " -n1 -s
+read -p "Press any key to force the disk dump (Checkpoint)... " -n1 -s
 echo ""
 
 echo "SQL: PRAGMA wal_checkpoint(TRUNCATE);"
 sqlite3 "$DB_PATH" "PRAGMA wal_checkpoint(TRUNCATE);"
-echo "  -> Volcado completado."
+echo "  -> Dump completed."
 
-echo "Restaurando permisos para Docker (Usuario 1000)..."
+echo "Restoring permissions for Docker (user 1000)..."
 chown -R 1000:1000 "$DB_DIR"
 
 echo ""
 echo "Reiniciando contenedor Stash..."
 docker start stash
 
-echo "=== MIGRACIÓN COMPLETADA CON ÉXITO ==="
+echo "=== MIGRATION COMPLETED SUCCESSFULLY ==="

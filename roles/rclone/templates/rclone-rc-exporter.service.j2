@@ -1,11 +1,11 @@
 # rclone-rc-exporter.service
 # ------------------------------------------------------------------
-# Ejecuta una vez (Type=oneshot) /usr/local/bin/rclone-rc-to-prometheus.sh.
-# No se lanza directamente: lo arranca el timer rclone-rc-exporter.timer
-# cada 30s. El script consulta la API RC del mount rclone
-# (http://127.0.0.1:5572, habilitada con --rc --rc-addr en
-# rclone-movistar-webdav.service) y escribe /mnt/docker/monitoring/textfile/rclone.prom
-# en formato Prometheus textfile.
+# Runs once (Type=oneshot) /usr/local/bin/rclone-rc-to-prometheus.sh.
+# Not launched directly: the timer rclone-rc-exporter.timer starts it
+# every 30s. The script queries the rclone mount RC API
+# (http://127.0.0.1:5572, enabled with --rc --rc-addr in
+# rclone-movistar-webdav.service) and writes /mnt/docker/monitoring/textfile/rclone.prom
+# in Prometheus textfile format.
 # ------------------------------------------------------------------
 [Unit]
 Description=Export rclone mount RC stats to node-exporter textfile

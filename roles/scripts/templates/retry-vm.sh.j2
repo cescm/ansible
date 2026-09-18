@@ -12,15 +12,15 @@ SSH_KEY="{{ oci_ssh_key | default('/root/.oci/oci-key.pub') }}"
 DELAY=120
 LOG="/root/retry-vm.log"
 
-echo "[$(date +'%Y-%m-%d %H:%M:%S')] === Retry loop iniciado ===" | tee -a "$LOG"
-echo "[$(date +'%Y-%m-%d %H:%M:%S')] Target: A1.Flex (4 OCPU / 24 GB / 200 GB) en eu-madrid-1" | tee -a "$LOG"
-echo "[$(date +'%Y-%m-%d %H:%M:%S')] Perfil: $PROFILE" | tee -a "$LOG"
+echo "[$(date +'%Y-%m-%d %H:%M:%S')] === Retry loop started ===" | tee -a "$LOG"
+echo "[$(date +'%Y-%m-%d %H:%M:%S')] Target: A1.Flex (4 OCPU / 24 GB / 200 GB) in eu-madrid-1" | tee -a "$LOG"
+echo "[$(date +'%Y-%m-%d %H:%M:%S')] Profile: $PROFILE" | tee -a "$LOG"
 echo "[$(date +'%Y-%m-%d %H:%M:%S')] Subnet: $SUBNET_OCID" | tee -a "$LOG"
 echo "" | tee -a "$LOG"
 
 attempt=1
 while true; do
-  echo "[$(date +'%Y-%m-%d %H:%M:%S')] Intento #$attempt..." | tee -a "$LOG"
+  echo "[$(date +'%Y-%m-%d %H:%M:%S')] Attempt #$attempt..." | tee -a "$LOG"
 
   out=$(oci compute instance launch --profile "$PROFILE" \
     --compartment-id "$TENANCY_OCID" \
@@ -37,26 +37,26 @@ while true; do
 
   if echo "$out" | grep -q "\"lifecycle-state\": \"RUNNING\""; then
     INSTANCE_ID=$(echo "$out" | jq -r '.data.id')
-    PUBLIC_IP=$(oci compute instance list-vnics --profile "$PROFILE" --instance-id "$INSTANCE_ID" --query "data[0].\"public-ip\"" --raw-output 2>/dev/null || echo "asignándose...")
-    echo "[$(date +'%Y-%m-%d %H:%M:%S')] ✓ VM CREADA!" | tee -a "$LOG"
+    PUBLIC_IP=$(oci compute instance list-vnics --profile "$PROFILE" --instance-id "$INSTANCE_ID" --query "data[0].\"public-ip\"" --raw-output 2>/dev/null || echo "assigning...")
+    echo "[$(date +'%Y-%m-%d %H:%M:%S')] ✓ VM CREATED!" | tee -a "$LOG"
     echo "[$(date +'%Y-%m-%d %H:%M:%S')] Instance OCID: $INSTANCE_ID" | tee -a "$LOG"
-    echo "[$(date +'%Y-%m-%d %H:%M:%S')] IP pública: $PUBLIC_IP" | tee -a "$LOG"
+    echo "[$(date +'%Y-%m-%d %H:%M:%S')] Public IP: $PUBLIC_IP" | tee -a "$LOG"
     exit 0
   elif echo "$out" | grep -q "Out of host capacity"; then
-    echo "[$(date +'%Y-%m-%d %H:%M:%S')] Sin capacidad. Reintentando en ${DELAY}s..." | tee -a "$LOG"
+    echo "[$(date +'%Y-%m-%d %H:%M:%S')] No capacity available. Retrying in ${DELAY}s..." | tee -a "$LOG"
     sleep "$DELAY"
     attempt=$((attempt + 1))
   elif echo "$out" | grep -q "TooManyRequests\|Too many requests"; then
-    echo "[$(date +'%Y-%m-%d %H:%M:%S')] Rate limit (429). Esperando 180s..." | tee -a "$LOG"
+    echo "[$(date +'%Y-%m-%d %H:%M:%S')] Rate limit (429). Waiting 180s..." | tee -a "$LOG"
     sleep 180
     attempt=$((attempt + 1))
   elif echo "$out" | grep -q "LimitExceeded"; then
-    echo "[$(date +'%Y-%m-%d %H:%M:%S')] Límite de servicio excedido. Esperando 180s..." | tee -a "$LOG"
+    echo "[$(date +'%Y-%m-%d %H:%M:%S')] Service limit exceeded. Waiting 180s..." | tee -a "$LOG"
     sleep 180
     attempt=$((attempt + 1))
   else
-    echo "[$(date +'%Y-%m-%d %H:%M:%S')] Error inesperado: $out" | tee -a "$LOG"
-    echo "[$(date +'%Y-%m-%d %H:%M:%S')] Reintentando en ${DELAY}s..." | tee -a "$LOG"
+    echo "[$(date +'%Y-%m-%d %H:%M:%S')] Unexpected error: $out" | tee -a "$LOG"
+    echo "[$(date +'%Y-%m-%d %H:%M:%S')] Retrying in ${DELAY}s..." | tee -a "$LOG"
     sleep "$DELAY"
     attempt=$((attempt + 1))
   fi
