@@ -3,12 +3,12 @@
 DB_PATH="/mnt/docker/stash/stash/config/stash-go.sqlite"
 DB_DIR=$(dirname "$DB_PATH")
 LOCAL_BASE_HOST="/mnt/storage/media/premovistar"
-REMOTE_BASE_HOST="/mnt/movistar_enc/media/pr"
+REMOTE_BASE_HOST="/mnt/movistar_webdav/media"
 DOCKER_LOCAL="/data"
 DOCKER_REMOTE="/data_remote"
 
 TARGET="${1%/}"
-if [ -z "$TARGET" ]; then echo "Usage: stash-migrate-safe.sh <folder>"; exit 1; fi
+if [ -z "$TARGET" ]; then echo "Usage: stash-migrate.sh <folder>"; exit 1; fi
 
 STASH_PATH_OLD="$DOCKER_LOCAL/$TARGET"
 STASH_PATH_NEW="$DOCKER_REMOTE/$TARGET"

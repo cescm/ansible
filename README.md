@@ -34,7 +34,7 @@ Automated provisioning for the entire home infrastructure + OCI.
 | `common` | `common`, `base` | Timezone Europe/Madrid, base + extra packages per group, conditional UFW |
 | `ssh-hardening` | `ssh`, `security` | SSH config variable-driven (PermitRootLogin, PasswordAuth), fail2ban |
 | `docker` | `docker` | Docker Engine + compose plugin, daemon.json (DNS, NVIDIA runtime) |
-| `rclone` | `rclone` | Build rclone with Movistar Cloud backend (PR#9191), vault config, systemd + healthcheck |
+| `rclone` | `rclone` | Rclone config + mounts (Movistar via o2cloud-gateway WebDAV → crypt), systemd + healthcheck/RC exporter |
 | `samba` | `samba` | Samba shares from vault (conditional, only when smb_conf_content is present) |
 | `scripts` | `scripts` | Copies management scripts to /mnt/scripts/ |
 | `nvidia` | `nvidia` | NVIDIA CUDA repo + cuda-drivers + nvidia-open-dkms + nvidia-container-toolkit |
@@ -197,7 +197,7 @@ ansible-vault encrypt host_vars/nueva-maquina.yml
     ├── common/              # Base + extra packages, conditional UFW
     ├── ssh-hardening/       # SSH config variable-driven
     ├── docker/              # Docker Engine + daemon.json
-    ├── rclone/              # Build PR#9191 + vault config + systemd
+    ├── rclone/              # WebDAV via o2cloud-gateway + crypt mount, vault config + systemd
     ├── samba/               # Samba from vault
     ├── scripts/             # Management scripts
     ├── nvidia/              # CUDA drivers + container toolkit
