@@ -71,7 +71,7 @@ tar xzf /root/backup.tar.gz -C /mnt/scripts/infra/ ansible
 | **Ollama** | opencode points to `http://192.168.8.2:11434`. That IP will be the new Proxmox host — no Ollama until you deploy Docker. Local models will not work until then. The remote model `opencode/big-pickle` (opencode.ai) works at all times. |
 | **Bun** | The `engram.ts` and `background-agents.ts` plugins use the Bun API. If opencode does not bundle it, those plugins will fail. Verify after restore. |
 | **SSH keys** | The keys in `~/.ssh/` authorized on other hosts (Pi3, OCI) are restored from the backup. |
-| **Ansible vault** | The `.vault_pass` is restored with the project. Without it, `smb_conf_content` and `rclone_config_content` cannot be decrypted. |
+| **Ansible vault** | `.vault_pass` is not committed to the repo (it is gitignored); recreate it from the Vault password section below. Without it, the encrypted variables cannot be decrypted. |
 
 ## Usage
 
@@ -132,6 +132,22 @@ ansible-playbook playbook.yml --vault-password-file .vault_pass
 #   common, ssh, docker, rclone, samba, scripts, nvidia, mergerfs, opencode
 ```
 
+## Rclone stack (trastero01)
+
+Movistar MíCloud is served through the `o2cloud-gateway-webdav` gateway and mounted in two layers:
+
+1. **Gateway**: the `o2cloud-webdav` container exposes the Movistar API as a WebDAV server at `http://localhost:8088/dav/`. It needs a valid O2 session, imported via `POST /api/admin/o2/import` and stored in `/config/secrets`.
+2. **Remotes** (from `rclone_config_content` in `group_vars/proxmox/vault.yml`):
+   - `webdav` → `http://localhost:8088/dav/` (gateway credentials)
+   - `movistar_webdav_enc` → crypt remote wrapping `webdav:encrypted`
+3. **Mounts** (systemd units):
+   - `rclone-movistar-webdav.service`: `movistar_webdav_enc:` → `/mnt/movistar_webdav` (decrypted media; Jellyfin consumes it via `/media3`). RC API on `127.0.0.1:5572`.
+   - `rclone-movistar-webdav-root.service`: raw `webdav:` → `/mnt/movistar_webdav_root` (encrypted folders as-is, no crypt). RC API on `127.0.0.1:5573`.
+
+Timers/helpers: `rclone-healthcheck`, `rclone-cache-clean`, `rclone-rc-exporter` (Prometheus textfile), `jellyfin-watchdog`. Logs: `/var/log/rclone-webdav.log` and `/var/log/rclone-webdav-root.log`.
+
+> The role previously built the native Movistar backend (PR#9191) and mounted `movistar:`/`movistar_enc`. That stack is gone: everything routes through the WebDAV gateway.
+
 ## Ansible Vault
 
 Machine passwords are encrypted with `ansible-vault`.
@@ -139,6 +155,8 @@ Machine passwords are encrypted with `ansible-vault`.
 ### Vault password
 
 `J3sc0b0sA_1976`
+
+> **Note:** `.vault_pass` is not committed (it is gitignored). After a fresh clone, recreate it from the password above before running any command that touches the vault, e.g. `printf '<vault-password>' > .vault_pass && chmod 600 .vault_pass`.
 
 ### Protected files
 
@@ -192,7 +210,7 @@ ansible-vault encrypt host_vars/nueva-maquina.yml
 │       ├── vars.yml         # Packages, docker_daemon_json, mergerfs_config
 │       └── vault.yml        # 🔒 rclone.conf + smb.conf (AES256)
 ├── playbook.yml             # Main playbook (8 roles)
-├── .vault_pass              # 🔒 Vault password (do not commit)
+├── .vault_pass              # 🔒 Vault password (gitignored; recreate from Vault password section)
 └── roles/
     ├── common/              # Base + extra packages, conditional UFW
     ├── ssh-hardening/       # SSH config variable-driven
