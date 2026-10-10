@@ -2,9 +2,10 @@
 # ------------------------------------------------------------------
 # Runs once (Type=oneshot) /usr/local/bin/rclone-rc-to-prometheus.sh.
 # Not launched directly: the timer rclone-rc-exporter.timer starts it
-# every 30s. The script queries the rclone mount RC API
-# (http://127.0.0.1:5572, enabled with --rc --rc-addr in
-# rclone-movistar-webdav.service) and writes /mnt/docker/monitoring/textfile/rclone.prom
+# every 30s. The script queries the RC API of BOTH rclone mounts
+# (127.0.0.1:5572 crypt + 127.0.0.1:5573 raw root; enabled with
+# --rc --rc-addr in their service units) and writes
+# /mnt/docker/monitoring/textfile/rclone.prom + rclone-root.prom
 # in Prometheus textfile format.
 # ------------------------------------------------------------------
 [Unit]

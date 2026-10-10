@@ -1,7 +1,9 @@
 ---
 ## rclone role — Movistar WebDAV mount stack (synced with live state on trastero01)
 ## Chain: rclone mount movistar_webdav_enc (crypt) -> webdav (o2cloud-gateway :8088/dav/encrypted) -> Movistar micloud
-## Monitoring: --rc --rc-addr 127.0.0.1:5572 + rclone-rc-to-prometheus.sh (timer 30s) -> textfile -> node-exporter -> Prometheus -> Grafana
+## Second mount: rclone-movistar-webdav-root.service -> webdav: (RAW /, no crypt) -> /mnt/movistar_webdav_root
+## Monitoring: --rc --rc-addr 127.0.0.1:5572 (crypt) + 127.0.0.1:5573 (root)
+##             rclone-rc-to-prometheus.sh (timer 30s) -> textfiles rclone.prom + rclone-root.prom
 
 - name: Create rclone mount directories
   file:
@@ -11,6 +13,8 @@
   loop:
     - /mnt/movistar_webdav
     - /mnt/movistar_webdav_cache
+    - /mnt/movistar_webdav_root
+    - /mnt/movistar_webdav_root_cache
 
 - name: Create rclone config directory
   file:
@@ -37,6 +41,12 @@
     dest: /usr/local/bin/rclone-cache-clean.sh
     mode: '0755'
 
+- name: Deploy rclone cache-clean-root script (ExecStartPre raw mount)
+  copy:
+    src: rclone-cache-clean-root.sh
+    dest: /usr/local/bin/rclone-cache-clean-root.sh
+    mode: '0755'
+
 - name: Deploy rclone RC-to-textfile exporter script
   copy:
     src: rclone-rc-to-prometheus.sh
@@ -47,6 +57,13 @@
   template:
     src: rclone-movistar-webdav.service.j2
     dest: /etc/systemd/system/rclone-movistar-webdav.service
+    mode: '0644'
+  notify: reload systemd
+
+- name: Deploy rclone-movistar-webdav-root systemd unit (raw mount)
+  template:
+    src: rclone-movistar-webdav-root.service.j2
+    dest: /etc/systemd/system/rclone-movistar-webdav-root.service
     mode: '0644'
   notify: reload systemd
 
@@ -110,6 +127,7 @@
     daemon_reload: yes
   loop:
     - rclone-movistar-webdav.service
+    - rclone-movistar-webdav-root.service
     - rclone-healthcheck.timer
     - rclone-rc-exporter.timer
     - jellyfin-watchdog.timer
@@ -122,6 +140,7 @@
     daemon_reload: yes
   loop:
     - rclone-movistar-webdav.service
+    - rclone-movistar-webdav-root.service
     - rclone-healthcheck.timer
     - rclone-rc-exporter.timer
     - jellyfin-watchdog.timer
