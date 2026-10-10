@@ -34,7 +34,7 @@ Automated provisioning for the entire home infrastructure + OCI.
 | `common` | `common`, `base` | Timezone Europe/Madrid, base + extra packages per group, conditional UFW |
 | `ssh-hardening` | `ssh`, `security` | SSH config variable-driven (PermitRootLogin, PasswordAuth), fail2ban |
 | `docker` | `docker` | Docker Engine + compose plugin, daemon.json (DNS, NVIDIA runtime) |
-| `rclone` | `rclone` | Rclone config + mounts (Movistar via o2cloud-gateway WebDAV → crypt), systemd + healthcheck/RC exporter |
+| `rclone` | `rclone` | Rclone config + mounts (crypt + raw root) via o2cloud WebDAV; systemd, healthcheck I/O, Jellyfin watchdog, RC exporter dual (crypt/root) |
 | `samba` | `samba` | Samba shares from vault (conditional, only when smb_conf_content is present) |
 | `scripts` | `scripts` | Copies management scripts to /mnt/scripts/ |
 | `nvidia` | `nvidia` | NVIDIA CUDA repo + cuda-drivers + nvidia-open-dkms + nvidia-container-toolkit |
