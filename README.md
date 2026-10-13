@@ -18,7 +18,7 @@ Automated provisioning for the entire home infrastructure + OCI.
 
 | Host | IP | HW | Ansible Roles |
 |---|---|---|---|
-| trastero01 | 192.168.8.2 | i7-7700K, 32GB, GTX 1080, 4x SATA drives (9TB pool) | common, ssh, docker, rclone, samba, scripts, nvidia, mergerfs |
+| trastero01 | 192.168.8.2 | i7-7700K, 32GB, GTX 1080, 4x SATA drives (9TB pool) | common, ssh, docker, rclone, samba, scripts, nvidia, mergerfs, proxmox-nag-patch |
 
 ### OCI (Oracle Cloud)
 
@@ -39,6 +39,7 @@ Automated provisioning for the entire home infrastructure + OCI.
 | `scripts` | `scripts` | Copies management scripts to /mnt/scripts/ |
 | `nvidia` | `nvidia` | NVIDIA CUDA repo + cuda-drivers + nvidia-open-dkms + nvidia-container-toolkit |
 | `mergerfs` | `mergerfs` | Installs mergerfs, mounts drives by ID, creates pool with mount module (safe fstab) |
+| `proxmox-nag-patch` | `proxmox-nag-patch` | Re-applies the Proxmox subscription nag bypass after apt upgrades (script + DPkg::Post-Invoke hook) |
 
 ## opencode Migration
 
@@ -129,7 +130,7 @@ ansible-playbook playbook.yml -l trastero01 --tags docker
 ansible-playbook playbook.yml --vault-password-file .vault_pass
 
 # Available tags:
-#   common, ssh, docker, rclone, samba, scripts, nvidia, mergerfs, opencode
+#   common, ssh, docker, rclone, samba, scripts, nvidia, mergerfs, opencode, proxmox-nag-patch
 ```
 
 ## Rclone stack (trastero01)
@@ -209,7 +210,7 @@ ansible-vault encrypt host_vars/nueva-maquina.yml
 │   └── proxmox/
 │       ├── vars.yml         # Packages, docker_daemon_json, mergerfs_config
 │       └── vault.yml        # 🔒 rclone.conf + smb.conf (AES256)
-├── playbook.yml             # Main playbook (8 roles)
+├── playbook.yml             # Main playbook (9 roles)
 ├── .vault_pass              # 🔒 Vault password (gitignored; recreate from Vault password section)
 └── roles/
     ├── common/              # Base + extra packages, conditional UFW
@@ -219,7 +220,8 @@ ansible-vault encrypt host_vars/nueva-maquina.yml
     ├── samba/               # Samba from vault
     ├── scripts/             # Management scripts
     ├── nvidia/              # CUDA drivers + container toolkit
-    └── mergerfs/            # mergerfs + drives by ID
+    ├── mergerfs/            # mergerfs + drives by ID
+    └── proxmox-nag-patch/   # Re-applies Proxmox subscription nag bypass after upgrades
 ```
 
 

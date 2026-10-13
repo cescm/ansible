@@ -68,6 +68,9 @@
     - role: mergerfs
       tags: [mergerfs, storage]
 
+    - role: proxmox-nag-patch
+      tags: [proxmox-nag-patch, proxmox]
+
   post_tasks:
     - name: Show provisioned machine info
       debug:

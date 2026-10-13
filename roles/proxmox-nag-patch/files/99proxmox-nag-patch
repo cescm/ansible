@@ -1,0 +1,3 @@
+// Re-apply the Proxmox subscription nag patch after any apt/dpkg operation
+// that may overwrite /usr/share/javascript/proxmox-widget-toolkit/proxmoxlib.js.
+DPkg::Post-Invoke { "if [ -x /usr/local/sbin/proxmox-nag-patch.sh ]; then /usr/local/sbin/proxmox-nag-patch.sh >/dev/null 2>&1 || true; fi"; };

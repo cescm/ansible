@@ -13,7 +13,7 @@ if [ ! -f "$VAULT_PASS_FILE" ]; then
   exit 1
 fi
 
-TAGS="${TAGS:-common,ssh,docker,rclone,samba,scripts,nvidia,mergerfs,opencode}"
+TAGS="${TAGS:-common,ssh,docker,rclone,samba,scripts,nvidia,mergerfs,opencode,proxmox-nag-patch}"
 LIMIT="${LIMIT:-all}"
 
 echo "============================================"

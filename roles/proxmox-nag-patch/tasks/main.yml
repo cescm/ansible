@@ -1,0 +1,20 @@
+---
+- name: Install proxmox-nag-patch script
+  copy:
+    src: proxmox-nag-patch.sh
+    dest: /usr/local/sbin/proxmox-nag-patch.sh
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Install proxmox-nag-patch apt hook
+  copy:
+    src: 99proxmox-nag-patch
+    dest: /etc/apt/apt.conf.d/99proxmox-nag-patch
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Apply proxmox-nag-patch
+  command: /usr/local/sbin/proxmox-nag-patch.sh
+  changed_when: false
