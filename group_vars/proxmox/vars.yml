@@ -42,6 +42,10 @@ docker_daemon_json:
     - 1.1.1.1
     - 8.8.8.8
   ipv6: false
+  log-driver: json-file
+  log-opts:
+    max-size: "10m"
+    max-file: "3"
 
 # OCI (Oracle Cloud) — resource IDs for retry-vm.sh
 oci_tenancy_ocid: "ocid1.tenancy.oc1..aaaaaaaa2y3jd7l4yif3j5pqualzjyhazsg6emnzzi7cv5uhdxtk4id7z7xq"

@@ -51,3 +51,11 @@
   ufw:
     state: enabled
   when: enable_ufw | default(true) | bool
+
+- name: Enable vm.overcommit_memory for Redis
+  ansible.posix.sysctl:
+    name: vm.overcommit_memory
+    value: "1"
+    sysctl_file: /etc/sysctl.d/99-redis.conf
+    state: present
+    reload: yes
