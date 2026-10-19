@@ -1,4 +1,14 @@
 #!/bin/bash
+# convert_cbr.sh — Batch convert CBR comics to CBZ
+#
+# Recursively finds .cbr files and converts them to .cbz (zip-based)
+# using unar or unrar for extraction. Runs multiple conversions in parallel.
+# Corrupted files are moved to a Corrupt/ subdirectory.
+#
+# Usage: ./convert_cbr.sh /path/to/comics
+#
+# Dependencies: unar (preferred) or unrar, zip
+# Config: DELETE_ORIGINAL="yes", MAX_JOBS=4
 
 # --- Configuration ---
 DELETE_ORIGINAL="yes"        # set to "yes" to delete .cbr after conversion

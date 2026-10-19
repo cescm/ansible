@@ -1,4 +1,18 @@
 #!/usr/bin/env bash
+# pack-archives-to-tars.sh — Batch archive files into size-limited tarballs
+#
+# Finds .zip, .7z, and .rar files in SRC_DIR and creates tarballs
+# sized to stay below MAX_MB. After packing, source files are moved
+# to a quarantine directory with checksum tracking for later verification
+# or restore. Supports resume, dry-run, and verify-only modes.
+#
+# Usage: ./pack-archives-to-tars.sh [--dry-run] [--verify-only]
+#   --dry-run      List files that would be processed without doing anything
+#   --verify-only  Verify existing tars and quarantine integrity
+#
+# Dependencies: tar, sha256sum (or shasum)
+# Output: ./tars_out/ with .tar, .txt, .sha256, .done files + quarantine/
+
 set -euo pipefail
 
 SRC_DIR="."

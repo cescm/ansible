@@ -1,4 +1,18 @@
 #!/usr/bin/env bash
+# restore-from-quarantine.sh — Restore files from quarantine with checksum verification
+#
+# Companion to pack-archives-to-tars.sh. Reads moved_map.tsv files in
+# quarantine directories and restores original files to their source
+# locations, verifying SHA256 checksums before and after move.
+# Supports dry-run, overwrite, and per-part filtering.
+#
+# Usage: ./restore-from-quarantine.sh [--execute] [--overwrite] [--only PART]
+#   --execute    Actually move files (dry-run by default)
+#   --overwrite  Overwrite existing files instead of using restored/ subdir
+#   --only PART  Process only one part (e.g., part-001)
+#
+# Dependencies: sha256sum (or shasum)
+
 set -euo pipefail
 
 SRC_DIR="."

@@ -1,4 +1,16 @@
 #!/usr/bin/env bash
+# compress.sh — Batch folder compression to 7z with parallel jobs
+#
+# Compresses all subdirectories in the current directory into 7z archives
+# using 7z with solid compression. Runs up to MAX_JOBS in parallel.
+# Supports pause/resume with the 'P' key.
+#
+# Usage: ./compress.sh
+#   Press 'P' to pause/resume compression
+#
+# Dependencies: 7z (p7zip), bash
+# Config: MAX_JOBS=6, THREADS=2
+
 set -e
 
 MAX_JOBS=6
