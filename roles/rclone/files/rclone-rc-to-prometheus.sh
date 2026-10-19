@@ -66,7 +66,8 @@ buf = ""
 for line in parts:
     buf += line
     try:
-        merged = json.loads(buf)
+        parsed = json.loads(buf)
+        merged.update(parsed)
         buf = ""
     except json.JSONDecodeError:
         continue
