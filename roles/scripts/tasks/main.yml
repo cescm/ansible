@@ -1,26 +1,63 @@
 ---
-- name: Create /mnt/scripts directory
+# The helper scripts live in their own repository (cescm/scripts) and are deployed
+# from there. /mnt/scripts is only the deployment target: never add scripts here.
+
+- name: Ensure /mnt/scripts exists
   file:
     path: /mnt/scripts
     state: directory
     mode: '0755'
 
-- name: Create /mnt/scripts/infra directory
-  file:
-    path: /mnt/scripts/infra
-    state: directory
+- name: Ensure the scripts repository is cloned and up to date
+  git:
+    repo: "{{ scripts_repo_url }}"
+    dest: "{{ scripts_repo_path }}"
+    version: "{{ scripts_repo_branch }}"
+  register: scripts_repo
+
+- name: Deploy the helper scripts (preserving functional subfolders)
+  copy:
+    src: "{{ scripts_repo_path }}/{{ item }}/"
+    dest: "/mnt/scripts/{{ item }}/"
     mode: '0755'
+    directory_mode: '0755'
+  loop: "{{ scripts_deploy_folders }}"
+  loop_control:
+    label: "{{ item }}"
 
 - name: Deploy retry-vm.sh (templated with OCI config)
   template:
-    src: templates/retry-vm.sh.j2
+    src: "{{ scripts_repo_path }}/templates/retry-vm.sh.j2"
     dest: /mnt/scripts/infra/retry-vm.sh
     mode: '0755'
   when: oci_tenancy_ocid is defined
 
-- name: Deploy custom scripts (preserving functional subfolders)
+- name: Ensure the secrets directory exists
+  file:
+    path: "{{ scripts_secrets_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0700'
+
+- name: Deploy the script secrets
   copy:
-    src: files/
-    dest: /mnt/scripts/
-    mode: '0755'
-    directory_mode: '0755'
+    content: "{{ item.value }}"
+    dest: "{{ scripts_secrets_dir }}/{{ item.key }}"
+    owner: root
+    group: root
+    mode: '0600'
+    no_log: true
+  loop:
+    - key: guardog_token
+      value: "{{ guardog_token }}"
+    - key: jellyfin_api_key
+      value: "{{ jellyfin_api_key }}"
+    - key: es_password
+      value: "{{ es_password }}"
+
+- name: Refresh the scripts index
+  shell: |
+    cd /mnt/scripts && find . -maxdepth 2 -type f -not -path './.archive/*' -not -name 'scripts.txt' \
+      | sed 's|^\./||' | sort > scripts.txt
+  changed_when: false

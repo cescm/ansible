@@ -36,7 +36,7 @@ Automated provisioning for the entire home infrastructure + OCI.
 | `docker` | `docker` | Docker Engine + compose plugin, daemon.json (DNS, NVIDIA runtime) |
 | `rclone` | `rclone` | Rclone config + mounts (crypt + raw root) via o2cloud WebDAV; systemd, healthcheck I/O, Jellyfin watchdog, RC exporter dual (crypt/root) |
 | `samba` | `samba` | Samba shares from vault (conditional, only when smb_conf_content is present) |
-| `scripts` | `scripts` | Copies management scripts to /mnt/scripts/ |
+| `scripts` | `scripts` | Clones the `cescm/scripts` repo into /mnt/repos/scripts and deploys the helpers to /mnt/scripts/ (plus their secrets in /etc/script-secrets) |
 | `nvidia` | `nvidia` | NVIDIA CUDA repo + cuda-drivers + nvidia-open-dkms + nvidia-container-toolkit |
 | `mergerfs` | `mergerfs` | Installs mergerfs, mounts drives by ID, creates pool with mount module (safe fstab) |
 | `proxmox-nag-patch` | `proxmox-nag-patch` | Re-applies the Proxmox subscription nag bypass after apt upgrades (script + DPkg::Post-Invoke hook) |
@@ -241,6 +241,23 @@ ansible-vault encrypt host_vars/nueva-maquina.yml
 # Edit inventory/hosts.yml and add under home: or similar
 ```
 
+## Helper scripts
+
+The helper scripts live in their own repository, `cescm/scripts`, and are deployed from there:
+
+| What | Where |
+|---|---|
+| Source of truth | `https://forgejo.caprichosdelucia.com/cescm/scripts` (cloned read-only by the `scripts` role) |
+| Checkout on the host | `/mnt/repos/scripts` — one folder per function: `docker/`, `infra/`, `media/`, `mediaserver/`, `o2/`, `stash/`, plus `templates/` for Ansible templates |
+| Runtime copy | `/mnt/scripts/<function>/` — the role copies the folders over and renders `templates/retry-vm.sh.j2` into `/mnt/scripts/infra/retry-vm.sh` |
+| Secrets | `/etc/script-secrets/<name>` (root-owned, `0600`), materialised by the role from `group_vars/proxmox/vault.yml` |
+
+**Convention**: every new helper script goes into `cescm/scripts` (locally `/mnt/repos/scripts`), in the
+folder that matches its function. Never edit `/mnt/scripts` by hand — it is overwritten on the next run.
+
+**Secrets**: no literal credentials in the repo. Scripts read them from the environment or from
+`/etc/script-secrets/<name>`; the role writes those files from the vault.
+
 ## Structure
 
 ```
@@ -261,7 +278,7 @@ ansible-vault encrypt host_vars/nueva-maquina.yml
     ├── docker/              # Docker Engine + daemon.json
     ├── rclone/              # WebDAV via o2cloud-gateway + crypt mount, vault config + systemd
     ├── samba/               # Samba from vault
-    ├── scripts/             # Management scripts
+    ├── scripts/             # Clones cescm/scripts → /mnt/repos/scripts, deploys helpers to /mnt/scripts
     ├── nvidia/              # CUDA drivers + container toolkit
     ├── mergerfs/            # mergerfs + drives by ID
     ├── proxmox-nag-patch/   # Re-applies Proxmox subscription nag bypass after upgrades

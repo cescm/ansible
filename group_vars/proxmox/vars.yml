@@ -120,3 +120,18 @@ opencode_home: "/root"
 opencode_install_dir: "/root/.opencode/bin"
 opencode_installer_path: "/usr/local/share/opencode/install.sh"
 opencode_profile_path: "/etc/profile.d/opencode.sh"
+
+# ---------------------------------------------------------------------------
+# Helper scripts (source of truth: the cescm/scripts repository)
+# ---------------------------------------------------------------------------
+scripts_repo_url: "https://forgejo.caprichosdelucia.com/cescm/scripts.git"
+scripts_repo_path: "/mnt/repos/scripts"
+scripts_repo_branch: "main"
+scripts_deploy_folders:
+  - docker
+  - infra
+  - media
+  - mediaserver
+  - o2
+  - stash
+scripts_secrets_dir: "/etc/script-secrets"
