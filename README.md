@@ -114,7 +114,7 @@ tar xzf /root/backup.tar.gz -C /mnt/scripts/infra/ ansible
 | **Ollama** | opencode points to `http://192.168.8.2:11434`. That IP will be the new Proxmox host — no Ollama until you deploy Docker. Local models will not work until then. The remote model `opencode/big-pickle` (opencode.ai) works at all times. |
 | **Bun** | The `engram.ts` and `background-agents.ts` plugins use the Bun API. If opencode does not bundle it, those plugins will fail. Verify after restore. |
 | **SSH keys** | The keys in `~/.ssh/` authorized on other hosts (Pi3, OCI) are restored from the backup. |
-| **Ansible vault** | `.vault_pass` is not committed to the repo (it is gitignored); recreate it from the Vault password section below. Without it, the encrypted variables cannot be decrypted. |
+| **Ansible vault** | `.vault_pass` is not committed to the repo (it is gitignored); recreate it from your password manager (the password is deliberately not stored in this repo). Without it, the encrypted variables cannot be decrypted. |
 
 ## Usage
 
@@ -198,18 +198,20 @@ Machine passwords are encrypted with `ansible-vault`.
 
 ### Vault password
 
-`J3sc0b0sA_1976`
+The vault password is **not stored in this repository**. Keep it in your password manager and recreate `.vault_pass` locally.
 
-> **Note:** `.vault_pass` is not committed (it is gitignored). After a fresh clone, recreate it from the password above before running any command that touches the vault, e.g. `printf '<vault-password>' > .vault_pass && chmod 600 .vault_pass`.
+> **Note:** `.vault_pass` is not committed (it is gitignored). After a fresh clone, recreate it before running any command that touches the vault, e.g. `printf '<vault-password>' > .vault_pass && chmod 600 .vault_pass`.
+>
+> **Security:** the previous vault password was leaked in clear text through a public repository and must be considered compromised. Rotate it and re-encrypt the vault (`ansible-vault encrypt_string` for every `!vault` value in `group_vars/proxmox/vault.yml`) before using this repo again.
 
 ### Protected files
 
 ```
 host_vars/
-├── trastero01.yml    🔒  Jescobosa_2
-├── trastero02.yml    🔒  Jescobosa_2
-├── rpi4.yml          🔒  Jescobosa_2
-└── rpi3.yml          🔒  J3sc0b0sA_1976
+├── trastero01.yml    🔒  ansible_ssh_pass (encrypted)
+├── trastero02.yml    🔒  ansible_ssh_pass (encrypted)
+├── rpi4.yml          🔒  ansible_ssh_pass (encrypted)
+└── rpi3.yml          🔒  ansible_ssh_pass (encrypted)
 ```
 
 ### Vault commands
