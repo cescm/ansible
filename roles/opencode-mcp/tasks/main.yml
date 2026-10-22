@@ -1,0 +1,63 @@
+---
+# Managed MCP server definitions for the opencode agent.
+#
+# opencode.json holds the canonical configuration; this role renders the
+# "mcp" section from vars (secrets come from the vault) and merges it into
+# ~/.config/opencode/opencode.json without touching the rest of the file
+# (model, agents, permissions, plugins...).
+#
+# The "mcp" section is removed from opencode.jsonc to avoid duplicated or
+# conflicting server definitions between the two config files.
+
+- name: Ensure the opencode configuration directory exists
+  ansible.builtin.file:
+    path: "{{ opencode_config_dir }}"
+    state: directory
+    mode: '0700'
+
+- name: Check the opencode CLI
+  ansible.builtin.command:
+    cmd: "{{ opencode_install_dir }}/opencode --version"
+  register: opencode_cli_version
+  changed_when: false
+  failed_when: false
+
+- name: Render the managed MCP definitions
+  ansible.builtin.template:
+    src: opencode-mcp.json.j2
+    dest: "{{ opencode_config_dir }}/.mcp-managed.json"
+    mode: '0600'
+  no_log: true
+  changed_when: false
+
+- name: Ensure the helper directory exists
+  ansible.builtin.file:
+    path: "{{ opencode_mcp_script_path | dirname }}"
+    state: directory
+    mode: '0755'
+
+- name: Install the MCP merge helper on the target host
+  ansible.builtin.copy:
+    src: files/merge_opencode_mcp.py
+    dest: "{{ opencode_mcp_script_path }}"
+    mode: '0755'
+
+- name: Merge the managed MCP definitions into the opencode configuration
+  ansible.builtin.command:
+    cmd: >-
+      python3 {{ opencode_mcp_script_path }}
+      --managed {{ opencode_config_dir }}/.mcp-managed.json
+      --target {{ opencode_config_dir }}/opencode.json
+      --secondary {{ opencode_config_dir }}/opencode.jsonc
+  register: opencode_mcp_merge
+  changed_when: "'status: changed' in opencode_mcp_merge.stdout"
+
+- name: Remove the rendered MCP definitions (they contain secrets)
+  ansible.builtin.file:
+    path: "{{ opencode_config_dir }}/.mcp-managed.json"
+    state: absent
+  changed_when: false
+
+- name: Report the MCP servers managed by this role
+  ansible.builtin.debug:
+    msg: "{{ opencode_mcp_merge.stdout_lines | default([]) }}"

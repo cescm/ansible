@@ -1,0 +1,94 @@
+---
+# opencode CLI installation.
+#
+# The CLI is installed with the official installer (the same one used by the
+# upstream curl | bash bootstrap), pinned to an explicit version so a fresh
+# provisioning always lands on a known release.
+#
+# The installer is vendored in files/install.sh instead of being downloaded at
+# run time: the upstream URL always serves the latest script, which would make
+# the provisioning non-reproducible and unreviewable.
+#
+# PATH is managed by this role (/etc/profile.d + ~/.bashrc) instead of by the
+# installer (--no-modify-path), to keep the shell configuration declarative.
+
+- name: Ensure the opencode install directory exists
+  ansible.builtin.file:
+    path: "{{ opencode_install_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Ensure the opencode share directory exists
+  ansible.builtin.file:
+    path: "{{ opencode_installer_path | dirname }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Install the opencode installer script
+  ansible.builtin.copy:
+    src: install.sh
+    dest: "{{ opencode_installer_path }}"
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Read the installed opencode version
+  ansible.builtin.command:
+    cmd: "{{ opencode_install_dir }}/opencode --version"
+  register: opencode_installed_version
+  changed_when: false
+  failed_when: false
+
+- name: Install opencode {{ opencode_version }}
+  ansible.builtin.command:
+    cmd: >-
+      bash {{ opencode_installer_path }}
+      --version {{ opencode_version }}
+      --no-modify-path
+  environment:
+    HOME: "{{ opencode_home }}"
+  register: opencode_install
+  changed_when: true
+  when: >-
+    opencode_installed_version.rc != 0
+    or (opencode_installed_version.stdout | trim) != opencode_version
+
+- name: Verify the opencode CLI
+  ansible.builtin.command:
+    cmd: "{{ opencode_install_dir }}/opencode --version"
+  register: opencode_version_check
+  changed_when: false
+  failed_when: (opencode_version_check.stdout | trim) != opencode_version
+
+- name: Export the opencode CLI path system wide
+  ansible.builtin.template:
+    src: opencode-profile.sh.j2
+    dest: "{{ opencode_profile_path }}"
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Ensure the root bashrc exists
+  ansible.builtin.file:
+    path: "{{ opencode_home }}/.bashrc"
+    state: touch
+    owner: root
+    group: root
+    mode: '0644'
+    modification_time: preserve
+    access_time: preserve
+
+- name: Export the opencode CLI path for interactive shells
+  ansible.builtin.blockinfile:
+    path: "{{ opencode_home }}/.bashrc"
+    marker: "# {mark} ANSIBLE MANAGED BLOCK (opencode)"
+    block: |
+      export PATH="{{ opencode_install_dir }}:$PATH"
+
+- name: Report the opencode CLI in use
+  ansible.builtin.debug:
+    msg: "{{ opencode_version_check.stdout | trim }} ({{ opencode_install_dir }}/opencode)"

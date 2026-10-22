@@ -1,0 +1,8 @@
+#!/bin/sh
+# ANSIBLE MANAGED - REA (Reverse Engineer Anything) engine locations
+export JAVA_HOME={{ java_home }}
+export GHIDRA_INSTALL_DIR={{ ghidra_install_dir }}
+export REA_JADX_MCP_JAR={{ jadx_mcp_jar }}
+export REA_KUNA_COMMAND={{ kuna_command }}
+export PATH="$GHIDRA_INSTALL_DIR/support:$PATH"
+export PATH="$(dirname "$REA_KUNA_COMMAND"):$PATH"

@@ -1,0 +1,106 @@
+---
+# REA (Reverse Engineer Anything) stack:
+#   - Ghidra 12.1.x (native binaries / firmware, ELF + PE + Mach-O)
+#   - jadx-headless-mcp 0.7.1 (Android APKs)
+#   - Kuna 1.833 (fast ELF / Mach-O decompiler)
+#   - rea-agents npm package (REA CLI + MCP server)
+#   - the REA skill copied into the opencode skills directory
+#
+# Version numbers and checksums live in group_vars/proxmox/vars.yml.
+
+- name: Create REA working directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+  loop:
+    - "{{ node_download_dir }}"
+    - "{{ rea_engines_dir }}"
+    - /root/.config/opencode/skills
+
+- name: Download Ghidra {{ ghidra_version }}
+  ansible.builtin.get_url:
+    url: "{{ ghidra_download_url }}"
+    dest: "{{ node_download_dir }}/ghidra_{{ ghidra_version }}.zip"
+    checksum: "sha256:{{ ghidra_sha256 }}"
+    mode: '0644'
+
+- name: Extract Ghidra {{ ghidra_version }} into /opt
+  ansible.builtin.unarchive:
+    src: "{{ node_download_dir }}/ghidra_{{ ghidra_version }}.zip"
+    dest: /opt
+    remote_src: true
+  args:
+    creates: "{{ ghidra_install_dir }}/support/analyzeHeadless"
+
+- name: Download jadx-headless-mcp {{ jadx_mcp_version }} jar
+  ansible.builtin.get_url:
+    url: "{{ jadx_mcp_url }}"
+    dest: "{{ jadx_mcp_jar }}"
+    checksum: "sha256:{{ jadx_mcp_sha256 }}"
+    mode: '0644'
+
+- name: Download Kuna {{ kuna_version }}
+  ansible.builtin.get_url:
+    url: "{{ kuna_download_url }}"
+    dest: "{{ rea_engines_dir }}/kuna-v{{ kuna_version }}-linux-x86_64.tar.gz"
+    checksum: "sha256:{{ kuna_sha256 }}"
+    mode: '0644'
+
+- name: Extract Kuna {{ kuna_version }}
+  ansible.builtin.unarchive:
+    src: "{{ rea_engines_dir }}/kuna-v{{ kuna_version }}-linux-x86_64.tar.gz"
+    dest: "{{ rea_engines_dir }}"
+    remote_src: true
+  args:
+    creates: "{{ kuna_command }}"
+
+- name: Make the Kuna binary executable
+  ansible.builtin.file:
+    path: "{{ kuna_command }}"
+    mode: '0755'
+
+- name: Install REA CLI {{ rea_version }} via npm
+  ansible.builtin.command:
+    cmd: "npm install --global rea-agents@{{ rea_version }} --allow-scripts=frida"
+  args:
+    creates: "{{ rea_bin }}"
+  changed_when: false
+
+- name: Install the REA skill for the opencode agent
+  ansible.builtin.copy:
+    src: "{{ npm_global_root }}/rea-agents/skills/reverse-engineer-anything"
+    dest: /root/.config/opencode/skills/reverse-engineer-anything
+    remote_src: true
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Export REA engine locations on login shells
+  ansible.builtin.template:
+    src: rea-engines.sh.j2
+    dest: /etc/profile.d/rea-engines.sh
+    mode: '0644'
+
+- name: Source the REA profile snippet from bashrc
+  ansible.builtin.blockinfile:
+    path: /root/.bashrc
+    marker: "# {mark} ANSIBLE MANAGED BLOCK (rea-engines)"
+    block: |
+      if [ -f /etc/profile.d/rea-engines.sh ]; then
+        . /etc/profile.d/rea-engines.sh
+      fi
+    create: false
+
+- name: Remind that opencode needs a restart to pick up the changes
+  ansible.builtin.debug:
+    msg: "REA skill and engine paths are in place; restart opencode to reload them."
+
+- name: Verify REA installation
+  ansible.builtin.command:
+    cmd: "{{ item }}"
+  loop:
+    - "{{ rea_bin }} --version"
+    - "{{ kuna_command }} --version"
+  changed_when: false
+  register: rea_versions

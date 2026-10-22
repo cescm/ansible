@@ -70,3 +70,53 @@ mergerfs_config:
     name: storage
     dest: /mnt/storage
     options: defaults,allow_other,category.create=mfs,minfreespace=10G
+
+# ---------------------------------------------------------------------------
+# Development toolchain + REA (Reverse Engineer Anything) stack
+# ---------------------------------------------------------------------------
+node_version: "24.22.1"
+node_download_url: "https://nodejs.org/dist/latest-v24.x/node-v24.22.1-linux-x64.tar.xz"
+node_sha256: "6c172a9ab6718f7b801fb5a7bd486af2ee5e32758086a04b84fcce2aa77095e6"
+node_install_dir: "/usr/local/lib/node24"
+node_download_dir: "/opt/rea-downloads"
+npm_global_root: "/usr/local/lib/node_modules"
+java_home: "/usr/lib/jvm/java-21-openjdk-amd64"
+engram_version: "v1.16.1"
+
+rea_version: "6.7.0"
+rea_bin: "/usr/local/bin/rea"
+rea_engines_dir: "/opt/rea-engines"
+ghidra_version: "12.1.4"
+ghidra_download_url: "https://github.com/NationalSecurityAgency/ghidra/releases/download/Ghidra_12.1.4_build/ghidra_12.1.4_PUBLIC_20260921.zip"
+ghidra_sha256: "ddac49f903da9d5bac833e5cc79395098b9c33cfd3279be5f31bd00387d2d4db"
+ghidra_install_dir: "/opt/ghidra_12.1.4_PUBLIC"
+jadx_mcp_version: "0.7.1"
+jadx_mcp_url: "https://github.com/1013503897/jadx-headless-mcp/releases/download/v0.7.1/jadx-headless-mcp-0.7.1-all.jar"
+jadx_mcp_sha256: "6e5eacf500b64292bfb73c49797c1958f6ee44646e43e868039ae7feb573ff75"
+jadx_mcp_jar: "/opt/rea-engines/jadx-headless-mcp-0.7.1-all.jar"
+kuna_version: "1.833"
+kuna_download_url: "https://github.com/Noelo-Lab/kuna/releases/download/v1.833/kuna-v1.833-linux-x86_64.tar.gz"
+kuna_sha256: "e9f047fb5a93925ede6d869df22c26c1c0ced90764ace7467ae90f880625d530"
+kuna_command: "/opt/rea-engines/kuna-v1.833-linux-x86_64/kuna"
+
+# ---------------------------------------------------------------------------
+# MCP servers managed for the opencode agent (secrets live in vault.yml)
+# ---------------------------------------------------------------------------
+opencode_config_dir: "/root/.config/opencode"
+opencode_mcp_script_path: "/usr/local/lib/opencode-mcp/merge_opencode_mcp.py"
+mcp_azure_command: ["npx", "-y", "@azure/mcp@2", "server", "start"]
+mcp_engram_command: ["/usr/local/bin/engram", "mcp", "--tools=agent"]
+mcp_n8n_command: ["npx", "-y", "n8n-mcp"]
+mcp_rea_command: ["/usr/local/bin/rea", "mcp"]
+context7_mcp_url: "https://mcp.context7.com/mcp"
+n8n_api_url: "https://n8n.caprichosdelucia.com"
+n8n_official_mcp_url: "https://n8n.caprichosdelucia.com/mcp-server/http"
+
+# ---------------------------------------------------------------------------
+# opencode CLI (official installer, pinned version)
+# ---------------------------------------------------------------------------
+opencode_version: "1.19.2"
+opencode_home: "/root"
+opencode_install_dir: "/root/.opencode/bin"
+opencode_installer_path: "/usr/local/share/opencode/install.sh"
+opencode_profile_path: "/etc/profile.d/opencode.sh"

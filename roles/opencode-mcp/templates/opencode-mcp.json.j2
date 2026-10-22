@@ -1,0 +1,48 @@
+{
+  "mcp": {
+    "azure": {
+      "type": "local",
+      "command": {{ mcp_azure_command | to_nice_json }},
+      "enabled": true
+    },
+    "context7": {
+      "type": "remote",
+      "url": "{{ context7_mcp_url }}",
+      "enabled": true
+    },
+    "engram": {
+      "type": "local",
+      "command": {{ mcp_engram_command | to_nice_json }},
+      "enabled": true
+    },
+    "n8n": {
+      "type": "local",
+      "command": {{ mcp_n8n_command | to_nice_json }},
+      "enabled": true,
+      "environment": {
+        "N8N_API_URL": "{{ n8n_api_url }}",
+        "N8N_API_KEY": "{{ n8n_api_key }}",
+        "N8N_MCP_ACCESS_TOKEN": "{{ n8n_mcp_access_token }}"
+      }
+    },
+    "n8n-official": {
+      "type": "remote",
+      "url": "{{ n8n_official_mcp_url }}",
+      "enabled": true,
+      "headers": {
+        "Authorization": "Bearer {{ n8n_official_auth_token }}"
+      }
+    },
+    "rea": {
+      "type": "local",
+      "command": {{ mcp_rea_command | to_nice_json }},
+      "enabled": true,
+      "environment": {
+        "GHIDRA_INSTALL_DIR": "{{ ghidra_install_dir }}",
+        "REA_JADX_MCP_JAR": "{{ jadx_mcp_jar }}",
+        "REA_KUNA_COMMAND": "{{ kuna_command }}",
+        "JAVA_HOME": "{{ java_home }}"
+      }
+    }
+  }
+}

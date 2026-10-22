@@ -18,7 +18,7 @@ Automated provisioning for the entire home infrastructure + OCI.
 
 | Host | IP | HW | Ansible Roles |
 |---|---|---|---|
-| trastero01 | 192.168.8.2 | i7-7700K, 32GB, GTX 1080, 4x SATA drives (9TB pool) | common, ssh, docker, rclone, samba, scripts, nvidia, mergerfs, proxmox-nag-patch |
+| trastero01 | 192.168.8.2 | i7-7700K, 32GB, GTX 1080, 4x SATA drives (9TB pool) | common, ssh, docker, rclone, samba, scripts, nvidia, mergerfs, proxmox-nag-patch, dev-toolchain, rea, opencode-mcp, opencode |
 
 ### OCI (Oracle Cloud)
 
@@ -40,6 +40,48 @@ Automated provisioning for the entire home infrastructure + OCI.
 | `nvidia` | `nvidia` | NVIDIA CUDA repo + cuda-drivers + nvidia-open-dkms + nvidia-container-toolkit |
 | `mergerfs` | `mergerfs` | Installs mergerfs, mounts drives by ID, creates pool with mount module (safe fstab) |
 | `proxmox-nag-patch` | `proxmox-nag-patch` | Re-applies the Proxmox subscription nag bypass after apt upgrades (script + DPkg::Post-Invoke hook) |
+| `dev-toolchain` | `dev`, `toolchain`, `node`, `java`, `engram` | JDK 21, Node.js 24 (checksum pinned), npm global prefix + install-script policy, engram CLI |
+| `rea` | `rea`, `reverse-engineering`, `rea-engines` | REA CLI + Ghidra 12.1.4, jadx-headless-mcp bridge JAR and Kuna 1.833 engines, plus the opencode REA skill |
+| `opencode-mcp` | `opencode-mcp`, `mcp` | Renders the managed MCP server block (azure, context7, engram, n8n, n8n-official, rea) and merges it into `opencode.json` |
+| `opencode` | `opencode`, `tools` | Installs the opencode CLI with the vendored official installer, pinned to an explicit version |
+
+### Developer toolchain, REA engines and MCP servers
+
+`trastero01` is the workstation that runs the opencode agent, so the repo also provisions its
+development stack and keeps the agent MCP configuration under version control.
+
+| Piece | Version | Location |
+|---|---|---|
+| Node.js | 24.22.1 | `/usr/local/lib/node24` (symlinked in `/usr/local/bin`) |
+| JDK | 21 | `/usr/lib/jvm/java-21-openjdk-amd64` |
+| REA CLI (`rea-agents`) | 6.7.0 | `/usr/local/bin/rea` |
+| Ghidra | 12.1.4 | `/opt/ghidra_12.1.4_PUBLIC` |
+| jadx-headless-mcp | 0.7.1 | `/opt/rea-engines/jadx-headless-mcp-0.7.1-all.jar` |
+| Kuna | 1.833 | `/opt/rea-engines/kuna-v1.833-linux-x86_64/kuna` |
+| engram CLI | v1.16.1 | `/usr/local/bin/engram` |
+| opencode CLI | 1.19.2 | `/root/.opencode/bin/opencode` |
+
+The opencode CLI is installed with the official installer vendored in `roles/opencode/files/install.sh`
+(pinned to `opencode_version`), not with `go install`: the Go module `github.com/anomalyco/opencode`
+is no longer published in the Go checksum database, so the Go path fails with a 404 on
+`sum.golang.org`. PATH is managed declaratively (`/etc/profile.d/opencode.sh` and `/root/.bashrc`)
+instead of by the installer itself.
+
+Engine locations are exported by `/etc/profile.d/rea-engines.sh` (sourced from `/root/.bashrc`).
+
+The MCP block is rendered from `group_vars/proxmox/vars.yml` plus the vaulted credentials in
+`group_vars/proxmox/vault.yml` (`n8n_api_key`, `n8n_mcp_access_token`, `n8n_official_auth_token`).
+`roles/opencode-mcp` merges it into `~/.config/opencode/opencode.json` (backing up the previous
+version) and removes the duplicated `mcp` section from `opencode.jsonc`. Restart opencode after a
+run so the agent reloads the server definitions.
+
+```bash
+# Provision the agent stack only
+ansible-playbook playbook.yml --tags opencode,dev,rea,opencode-mcp
+
+# Verify the REA engines are detected
+rea doctor
+```
 
 ## opencode Migration
 
@@ -130,7 +172,8 @@ ansible-playbook playbook.yml -l trastero01 --tags docker
 ansible-playbook playbook.yml --vault-password-file .vault_pass
 
 # Available tags:
-#   common, ssh, docker, rclone, samba, scripts, nvidia, mergerfs, opencode, proxmox-nag-patch
+#   common, ssh, docker, rclone, samba, scripts, nvidia, mergerfs, opencode, proxmox-nag-patch,
+#   dev, toolchain, node, java, engram, rea, reverse-engineering, rea-engines, opencode-mcp, mcp
 ```
 
 ## Rclone stack (trastero01)
@@ -208,9 +251,9 @@ ansible-vault encrypt host_vars/nueva-maquina.yml
 ├── host_vars/               # 🔒 Encrypted passwords (per host)
 ├── group_vars/              # Shared variables per group
 │   └── proxmox/
-│       ├── vars.yml         # Packages, docker_daemon_json, mergerfs_config
-│       └── vault.yml        # 🔒 rclone.conf + smb.conf (AES256)
-├── playbook.yml             # Main playbook (9 roles)
+│       ├── vars.yml         # Packages, docker_daemon_json, mergerfs_config, toolchain + MCP vars
+│       └── vault.yml        # 🔒 rclone.conf + smb.conf + MCP credentials (AES256)
+├── playbook.yml             # Main playbook (13 roles)
 ├── .vault_pass              # 🔒 Vault password (gitignored; recreate from Vault password section)
 └── roles/
     ├── common/              # Base + extra packages, conditional UFW
@@ -221,7 +264,11 @@ ansible-vault encrypt host_vars/nueva-maquina.yml
     ├── scripts/             # Management scripts
     ├── nvidia/              # CUDA drivers + container toolkit
     ├── mergerfs/            # mergerfs + drives by ID
-    └── proxmox-nag-patch/   # Re-applies Proxmox subscription nag bypass after upgrades
+    ├── proxmox-nag-patch/   # Re-applies Proxmox subscription nag bypass after upgrades
+    ├── dev-toolchain/       # JDK 21, Node.js 24, npm policy, engram CLI
+    ├── rea/                 # REA CLI + Ghidra / jadx-mcp / Kuna engines + opencode skill
+    ├── opencode-mcp/        # Managed MCP servers merged into opencode.json
+    └── opencode/            # opencode CLI via the vendored official installer (version pinned)
 ```
 
 

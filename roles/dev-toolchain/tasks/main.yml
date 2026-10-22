@@ -1,0 +1,93 @@
+---
+# Toolchain for development and reverse engineering workloads:
+#   - JDK 21 (needed by Ghidra and jadx-headless-mcp)
+#   - Node.js 24 (needed by REA CLI / n8n MCP / opencode plugins)
+#   - npm global prefix + allow-scripts policy for the REA dependency tree
+#   - engram CLI (persistent memory MCP server used by the opencode agent)
+
+- name: Install JDK 21 (headless) and development headers
+  apt:
+    name:
+      - openjdk-21-jdk
+      - build-essential
+      - unzip
+      - xz-utils
+      - python3
+      - golang-go
+    state: present
+    update_cache: yes
+    cache_valid_time: 3600
+
+- name: Create Node.js installation directory
+  ansible.builtin.file:
+    path: "{{ node_install_dir }}"
+    state: directory
+    mode: '0755'
+
+- name: Create download directory
+  ansible.builtin.file:
+    path: "{{ node_download_dir }}"
+    state: directory
+    mode: '0755'
+
+- name: Download Node.js {{ node_version }} tarball
+  ansible.builtin.get_url:
+    url: "{{ node_download_url }}"
+    dest: "{{ node_download_dir }}/node-{{ node_version }}-linux-x64.tar.xz"
+    checksum: "sha256:{{ node_sha256 }}"
+    mode: '0644'
+
+- name: Extract Node.js {{ node_version }} into {{ node_install_dir }}
+  ansible.builtin.unarchive:
+    src: "{{ node_download_dir }}/node-{{ node_version }}-linux-x64.tar.xz"
+    dest: "{{ node_install_dir }}"
+    remote_src: true
+    extra_opts:
+      - --strip-components=1
+  args:
+    creates: "{{ node_install_dir }}/bin/node"
+
+- name: Symlink node, npm and npx into /usr/local/bin
+  ansible.builtin.file:
+    src: "{{ node_install_dir }}/bin/{{ item }}"
+    dest: "/usr/local/bin/{{ item }}"
+    state: link
+  loop:
+    - node
+    - npm
+    - npx
+
+- name: Expose Node.js on login shells
+  ansible.builtin.copy:
+    dest: /etc/profile.d/00-node.sh
+    mode: '0644'
+    content: |
+      export NODE_HOME={{ node_install_dir }}
+      export PATH="$NODE_HOME/bin:$PATH"
+
+- name: Configure npm global prefix and allowed install scripts
+  ansible.builtin.copy:
+    dest: /root/.npmrc
+    mode: '0644'
+    content: |
+      prefix=/usr/local
+      allow-scripts=frida
+
+- name: Install engram CLI {{ engram_version }}
+  ansible.builtin.command:
+    cmd: "go install github.com/Gentleman-Programming/engram/cmd/engram@{{ engram_version }}"
+  environment:
+    GOBIN: /usr/local/bin
+  args:
+    creates: /usr/local/bin/engram
+  changed_when: false
+
+- name: Verify toolchain versions
+  ansible.builtin.command:
+    cmd: "{{ item }}"
+  loop:
+    - node --version
+    - npm --version
+    - java -version
+  changed_when: false
+  register: dev_toolchain_versions

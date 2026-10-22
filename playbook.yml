@@ -28,20 +28,16 @@
       when: ansible_os_family == "Debian"
       tags: [apt]
 
-    - name: Ensure Go is installed (needed for opencode build)
+    - name: Ensure Go is installed (needed to build the engram CLI)
       apt:
         name: golang-go
         state: present
       when: ansible_os_family == "Debian"
       tags: [opencode, tools, apt]
 
-    - name: Install opencode via Go
-      command: go install github.com/anomalyco/opencode@latest
-      environment:
-        GOBIN: /usr/local/bin
-      args:
-        creates: /usr/local/bin/opencode
-      tags: [opencode, tools]
+    # opencode itself is installed by the `opencode` role below: the upstream
+    # Go module is not published in the Go checksum database and the official
+    # installer is the supported distribution channel.
 
   roles:
     - role: common
@@ -70,6 +66,18 @@
 
     - role: proxmox-nag-patch
       tags: [proxmox-nag-patch, proxmox]
+
+    - role: opencode
+      tags: [opencode, tools]
+
+    - role: dev-toolchain
+      tags: [dev, toolchain, node, java, engram]
+
+    - role: rea
+      tags: [rea, reverse-engineering, rea-engines]
+
+    - role: opencode-mcp
+      tags: [opencode-mcp, mcp]
 
   post_tasks:
     - name: Show provisioned machine info
