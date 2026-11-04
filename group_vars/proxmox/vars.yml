@@ -133,5 +133,6 @@ scripts_deploy_folders:
   - media
   - mediaserver
   - o2
+  - omniroute
   - stash
 scripts_secrets_dir: "/etc/script-secrets"

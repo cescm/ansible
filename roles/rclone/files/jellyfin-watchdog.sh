@@ -1,10 +1,12 @@
 #!/bin/bash
-# jellyfin-watchdog.sh — Restart Jellyfin when it loses the rclone WebDAV mount
+# jellyfin-watchdog.sh — Restart Jellyfin when it loses an rclone WebDAV mount
 #
-# Jellyfin maps /media3 -> /mnt/movistar_webdav/media (rclone fuse mount).
-# When the Movistar session expires and is re-established, the FUSE mount
+# Jellyfin maps:
+#   /media3 -> /mnt/movistar_webdav/media       (garanda21 rclone fuse mount)
+#   /media4 -> /mnt/movistar_proxy/media         (uniextra rclone fuse mount)
+# When a Movistar session expires and is re-established, the FUSE mount
 # stalls (host ls hangs / gateway 503) and Jellyfin keeps a stale handle.
-# Also, if the container started BEFORE the mount recovered, its /media3 bind
+# Also, if the container started BEFORE the mount recovered, its bind
 # is stale and EMPTY. The media dir always has entries, so empty == stale.
 # This watchdog detects both conditions and restarts the container so it
 # re-reads the mount.
@@ -15,22 +17,34 @@
 
 set -euo pipefail
 
-MOUNT="/mnt/movistar_webdav"
 JF_CONTAINER="jellyfin"
-JF_MEDIA="/media3"
+JF_MEDIA_PATHS=("/media3" "/media4")
 LOG_TAG="jellyfin-watchdog"
 
-# If the mount point isn't even present, nothing to watch
-if [ ! -d "$MOUNT" ]; then
+# If neither mount point is present, nothing to watch
+if [ ! -d "/mnt/movistar_webdav" ] && [ ! -d "/mnt/movistar_proxy" ]; then
     exit 0
 fi
 
-# Test /media3 inside the container (ls may hang if the fuse is stalled; an
-# empty output means stale bind captured before the mount recovered).
-media=$(timeout 10 docker exec "$JF_CONTAINER" ls -A "$JF_MEDIA" 2>/dev/null || true)
+needs_restart=false
+restart_reason=""
 
-if [ -z "$media" ]; then
-    logger -t "$LOG_TAG" "$JF_MEDIA inside $JF_CONTAINER is empty/stalled, restarting $JF_CONTAINER"
+for media_path in "${JF_MEDIA_PATHS[@]}"; do
+    # Test the media path inside the container (ls may hang if the fuse is
+    # stalled; an empty output means stale bind captured before the mount
+    # recovered).
+    media=$(timeout 10 docker exec "$JF_CONTAINER" ls -A "$media_path" 2>/dev/null || true)
+
+    if [ -z "$media" ]; then
+        logger -t "$LOG_TAG" "$media_path inside $JF_CONTAINER is empty/stalled"
+        needs_restart=true
+        restart_reason="$media_path empty/stalled"
+        break
+    fi
+done
+
+if [ "$needs_restart" = true ]; then
+    logger -t "$LOG_TAG" "restarting $JF_CONTAINER ($restart_reason)"
     if ! docker restart "$JF_CONTAINER" > /dev/null 2>&1; then
         logger -t "$LOG_TAG" "Failed to restart $JF_CONTAINER"
         exit 1

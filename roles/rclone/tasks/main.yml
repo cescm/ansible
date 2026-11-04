@@ -17,6 +17,8 @@
     - /mnt/movistar_webdav_root_cache
     - /mnt/movistar_proxy
     - /mnt/movistar_proxy_cache
+    - /mnt/movistar_proxy_root
+    - /mnt/movistar_proxy_root_cache
 
 - name: Create rclone config directory
   file:
@@ -53,6 +55,19 @@
   template:
     src: rclone-movistar-proxy.service.j2
     dest: /etc/systemd/system/rclone-movistar-proxy.service
+    mode: '0644'
+  notify: reload systemd
+
+- name: Deploy rclone-cache-clean-proxy-root script (ExecStartPre for proxy raw mount)
+  copy:
+    src: rclone-cache-clean-proxy-root.sh
+    dest: /usr/local/bin/rclone-cache-clean-proxy-root.sh
+    mode: '0755'
+
+- name: Deploy rclone-movistar-proxy-root systemd unit (uniextra raw root mount)
+  template:
+    src: rclone-movistar-proxy-root.service.j2
+    dest: /etc/systemd/system/rclone-movistar-proxy-root.service
     mode: '0644'
   notify: reload systemd
 
@@ -138,6 +153,7 @@
     - rclone-movistar-webdav.service
     - rclone-movistar-webdav-root.service
     - rclone-movistar-proxy.service
+    - rclone-movistar-proxy-root.service
     - rclone-healthcheck.timer
     - rclone-rc-exporter.timer
     - jellyfin-watchdog.timer
@@ -152,6 +168,7 @@
     - rclone-movistar-webdav.service
     - rclone-movistar-webdav-root.service
     - rclone-movistar-proxy.service
+    - rclone-movistar-proxy-root.service
     - rclone-healthcheck.timer
     - rclone-rc-exporter.timer
     - jellyfin-watchdog.timer

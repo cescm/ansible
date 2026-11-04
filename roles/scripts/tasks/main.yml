@@ -61,3 +61,17 @@
     cd /mnt/scripts && find . -maxdepth 2 -type f -not -path './.archive/*' -not -name 'scripts.txt' \
       | sed 's|^\./||' | sort > scripts.txt
   changed_when: false
+
+- name: Ensure the OmniRoute combo-sync config directory exists
+  file:
+    path: /root/.config/omniroute
+    state: directory
+    mode: '0700'
+
+- name: Schedule OmniRoute free-models combo sync
+  cron:
+    name: omniroute free-models combo sync
+    minute: "17"
+    hour: "*/6"
+    job: '/usr/bin/python3 /mnt/scripts/omniroute/combo-sync.py >> /mnt/scripts/omniroute/combo-sync.log 2>&1'
+    state: present
