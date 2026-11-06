@@ -37,9 +37,9 @@ ExecStart=/usr/bin/rclone mount movistar_encrypted: /mnt/movistar_proxy \
   --vfs-cache-max-size 20G \
   --vfs-write-back 5s \
   --cache-dir=/mnt/movistar_proxy_cache \
-  --vfs-read-chunk-size 134217728 \
-  --vfs-read-chunk-size-limit 134217728 \
-  --buffer-size 16M \
+  --vfs-read-chunk-size 268435456 \
+  --vfs-read-chunk-size-limit 268435456 \
+  --buffer-size 32M \
   --vfs-read-wait 20ms \
   --dir-cache-time 5m \
   --attr-timeout 10m \
@@ -51,6 +51,7 @@ ExecStart=/usr/bin/rclone mount movistar_encrypted: /mnt/movistar_proxy \
   --vfs-cache-poll-interval 5m \
   --async-read \
   --rc \
+  --rc-no-auth \
   --rc-addr 127.0.0.1:5574 \
   --log-level DEBUG \
   --log-file /var/log/rclone-movistar-proxy.log
