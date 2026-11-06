@@ -34,7 +34,7 @@ ExecStart=/usr/bin/rclone mount movistar_encrypted: /mnt/movistar_proxy \
   --gid 1000 \
   --umask 002 \
   --vfs-cache-mode full \
-  --vfs-cache-max-size 100G \
+  --vfs-cache-max-size 20G \
   --vfs-write-back 5s \
   --cache-dir=/mnt/movistar_proxy_cache \
   --vfs-read-chunk-size 134217728 \
@@ -47,7 +47,8 @@ ExecStart=/usr/bin/rclone mount movistar_encrypted: /mnt/movistar_proxy \
   --contimeout 30s \
   --retries 10 \
   --low-level-retries 30 \
-  --vfs-cache-max-age 72h \
+  --vfs-cache-max-age 24h \
+  --vfs-cache-poll-interval 5m \
   --async-read \
   --rc \
   --rc-addr 127.0.0.1:5574 \
