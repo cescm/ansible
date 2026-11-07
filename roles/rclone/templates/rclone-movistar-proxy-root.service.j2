@@ -49,6 +49,7 @@ ExecStart=/usr/bin/rclone mount movistar_proxy: /mnt/movistar_proxy_root \
   --vfs-cache-poll-interval 2m \
   --async-read \
   --rc \
+  --rc-no-auth \
   --rc-addr 127.0.0.1:5575 \
   --log-level DEBUG \
   --log-file /var/log/rclone-movistar-proxy-root.log

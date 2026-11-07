@@ -11,10 +11,10 @@
     state: directory
     mode: '0755'
   loop:
-    - /mnt/movistar_webdav
-    - /mnt/movistar_webdav_cache
-    - /mnt/movistar_webdav_root
-    - /mnt/movistar_webdav_root_cache
+    - /mnt/movistar_proxy
+    - /mnt/movistar_proxy_cache
+    - /mnt/movistar_proxy_root
+    - /mnt/movistar_proxy_root_cache
     - /mnt/movistar_proxy
     - /mnt/movistar_proxy_cache
     - /mnt/movistar_proxy_root
@@ -32,12 +32,6 @@
     dest: /root/.config/rclone/rclone.conf
     mode: '0600'
   when: rclone_config_content is defined
-
-- name: Deploy rclone healthcheck script (webdav)
-  copy:
-    src: rclone-healthcheck.sh
-    dest: /usr/local/bin/rclone-healthcheck.sh
-    mode: '0755'
 
 - name: Deploy rclone cache-clean script (ExecStartPre)
   copy:
@@ -77,20 +71,6 @@
     dest: /usr/local/bin/rclone-rc-to-prometheus.sh
     mode: '0755'
 
-- name: Deploy rclone-movistar-webdav systemd unit (mount)
-  template:
-    src: rclone-movistar-webdav.service.j2
-    dest: /etc/systemd/system/rclone-movistar-webdav.service
-    mode: '0644'
-  notify: reload systemd
-
-- name: Deploy rclone-movistar-webdav-root systemd unit (raw mount)
-  template:
-    src: rclone-movistar-webdav-root.service.j2
-    dest: /etc/systemd/system/rclone-movistar-webdav-root.service
-    mode: '0644'
-  notify: reload systemd
-
 - name: Deploy rclone RC exporter service (oneshot)
   template:
     src: rclone-rc-exporter.service.j2
@@ -102,20 +82,6 @@
   template:
     src: rclone-rc-exporter.timer.j2
     dest: /etc/systemd/system/rclone-rc-exporter.timer
-    mode: '0644'
-  notify: reload systemd
-
-- name: Deploy rclone-healthcheck service (oneshot)
-  template:
-    src: rclone-healthcheck.service.j2
-    dest: /etc/systemd/system/rclone-healthcheck.service
-    mode: '0644'
-  notify: reload systemd
-
-- name: Deploy rclone-healthcheck timer
-  template:
-    src: rclone-healthcheck.timer.j2
-    dest: /etc/systemd/system/rclone-healthcheck.timer
     mode: '0644'
   notify: reload systemd
 
@@ -150,8 +116,6 @@
     enabled: yes
     daemon_reload: yes
   loop:
-    - rclone-movistar-webdav.service
-    - rclone-movistar-webdav-root.service
     - rclone-movistar-proxy.service
     - rclone-movistar-proxy-root.service
     - rclone-healthcheck.timer
@@ -165,8 +129,6 @@
     state: started
     daemon_reload: yes
   loop:
-    - rclone-movistar-webdav.service
-    - rclone-movistar-webdav-root.service
     - rclone-movistar-proxy.service
     - rclone-movistar-proxy-root.service
     - rclone-healthcheck.timer
