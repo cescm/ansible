@@ -27,6 +27,10 @@ Automated provisioning for the entire home infrastructure + OCI.
 | oci-madrid | 158.179.209.39 | Madrid | VM.Standard.A1.Flex (4 OCPU, 24GB) |
 | oci-frankfurt | 130.61.106.137 | Frankfurt | VM.Standard.A1.Flex (4 OCPU, 24GB) |
 
+### Windows guests
+
+Windows VMs provisioned by the `iac` repo (e.g. `windows11-lab`, VM 102) are **not** managed by this playbook. Everything here targets Linux over SSH; a Windows guest requires WinRM and a separate Windows playbook, which does not exist yet. Windows guests are configured manually for now.
+
 ## Roles
 
 | Role | Tags | Description |
